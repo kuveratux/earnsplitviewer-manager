@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- 通信先を自分のサイトと Google ドライブ連携（ログイン・ファイル選択・取得）だけに限定する -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://accounts.google.com/gsi/client https://apis.google.com https://www.gstatic.com; style-src 'self' 'unsafe-inline' https://accounts.google.com/gsi/style; img-src 'self' data: https://*.googleusercontent.com https://ssl.gstatic.com https://www.gstatic.com; connect-src 'self' https://www.googleapis.com https://accounts.google.com/gsi/; frame-src https://accounts.google.com/gsi/ https://docs.google.com https://drive.google.com https://content.googleapis.com; manifest-src 'self'; worker-src 'self'; base-uri 'self'; form-action 'none'">
+<!-- 送るのはサイト名（https://kuveratux.github.io/）だけ。API キーのウェブサイト制限の判定に必要 -->
+<meta name="referrer" content="strict-origin">
+<meta name="theme-color" content="#1f6b5c">
+<title>ESV Manager</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="ESV Manager">
+<link rel="stylesheet" href="style.css">
+<script src="app-config.js"></script>
+<script src="appearance.js"></script>
+</head>
+<body>
+<header class="bar">
+  <div class="title"><h1>ESV Manager</h1><span class="role">Manager</span></div>
+  <span id="status" class="status"></span>
+</header>
+
+<nav class="tabs" role="tablist">
+  <button role="tab" data-tab="tx" aria-selected="true">取引</button>
+  <button role="tab" data-tab="reward">報酬</button>
+  <button role="tab" data-tab="settings">設定</button>
+</nav>
+
+<div id="updateNote" class="note update" hidden>新しいバージョンがあります。<button id="reloadBtn" class="primary">更新する</button></div>
+<main>
+  <div id="dummyNote" class="note" hidden>表示しているのは動作確認用のダミーデータです。</div>
+
+  <!-- 取引 -->
+  <section id="tab-tx" class="tab">
+    <div class="card whenEmpty" hidden>
+      <h2>データがありません</h2>
+      <p class="muted">データを取得すると、取引が表示されます。</p>
+      <div class="row">
+        <button class="primary driveFetch driveOnly" hidden>最新データを取得</button>
+        <label class="button">ファイルから読み込む<input class="dataFile" type="file" accept="application/json,.json" multiple hidden></label>
+      </div>
+    </div>
+    <div class="whenData" hidden>
+      <div class="row driveOnly" hidden><button class="primary driveFetch">最新データを取得</button></div>
+      <div id="splitCard"></div>
+      <h2 class="sec">区分別</h2>
+      <div class="scroll"><table id="clsTable" class="grid"></table></div>
+      <h2 class="sec">取引</h2>
+      <div class="filters">
+        <label>区分 <select id="clsSel"></select></label>
+        <label>向き
+          <select id="dirSel">
+            <option value="">すべて</option>
+            <option value="in">受取</option>
+            <option value="out">送付</option>
+          </select>
+        </label>
+      </div>
+      <p id="txCount" class="muted"></p>
+      <ul id="txList" class="txlist"></ul>
+    </div>
+  </section>
+
+  <!-- 報酬 -->
+  <section id="tab-reward" class="tab" hidden>
+    <p class="muted whenEmpty" hidden>データを読み込むと、報酬が表示されます。</p>
+    <div class="whenData" hidden>
+      <div id="rewardNote" class="note" hidden></div>
+      <div id="rewardBody">
+        <p id="rewardAsOf" class="muted"></p>
+        <div id="rewardCards" class="cards"></div>
+        <h2 class="sec">3年後までの見込み</h2>
+        <div class="chart-controls">
+          <div id="modeSeg" class="seg" role="group" aria-label="計算方法">
+            <button type="button" data-mode="simple" aria-pressed="true">単利</button>
+            <button type="button" data-mode="compound" aria-pressed="false">複利</button>
+          </div>
+          <select id="whoSel" aria-label="対象" hidden></select>
+        </div>
+        <div id="rewardChart"></div>
+        <h2 class="sec">見込みの一覧</h2>
+        <div class="scroll"><table id="rewardTable" class="grid"></table></div>
+        <p class="muted">単利：毎日、預入枚数×年利÷365 を足します。複利：毎日、その時点の枚数×年利÷365 を足し、枚数が増えてランクが上がったら年利も上げます。見込みは新ランク表の年利で計算します（ランク表が変わらない前提の目安です）。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 設定 -->
+  <section id="tab-settings" class="tab" hidden>
+    <div class="card">
+      <h2>アドレス一覧</h2>
+      <p class="muted">取引に出てきたアドレスの一覧です。名前を付けると、取引一覧の相手先にも表示されます（この端末だけに保存）。</p>
+      <div class="row"><button id="openBookBtn" class="primary">アドレス一覧を開く</button></div>
+    </div>
+    <div class="card">
+      <h2>データ</h2>
+      <p id="dataInfo" class="muted">まだ読み込んでいません。</p>
+      <p class="muted">データは自動では更新されません。「最新データを取得」を押すか、ファイルから読み込んでください（暗号化されたファイルは合言葉を入力します）。Manager 用のデータファイル（全取引）と、ランク表（旧・新）を読み込みます。</p>
+      <div class="row">
+        <button class="primary driveFetch driveOnly" hidden>最新データを取得</button>
+        <label class="button">ファイルから読み込む<input class="dataFile" type="file" accept="application/json,.json" multiple hidden></label>
+      </div>
+      <p id="storageInfo" class="muted"></p>
+    </div>
+    <div class="card driveOnly" hidden>
+      <h2>Google ドライブ</h2>
+      <p id="driveInfo" class="muted"></p>
+      <p class="muted">このアプリが読めるのは、ここで選んだファイルだけです。ドライブのほかのファイルは見えません。</p>
+      <div class="row">
+        <button id="drivePickBtn">ファイルを選び直す</button>
+        <button id="driveSignOutBtn">連携を解除</button>
+        <button id="forgetPassBtn" hidden>保存した合言葉を削除</button>
+      </div>
+    </div>
+    <div class="card">
+      <h2>このアプリについて</h2>
+      <p>バージョン：<b id="appVersion"></b></p>
+      <div class="row"><button id="updateBtn">更新を確認</button></div>
+    </div>
+    <div class="card">
+      <h2>表示と配色</h2>
+      <p class="muted">この端末だけの設定です。</p>
+      <label class="field">表示名（空欄なら既定の名前）<input id="lookName" maxlength="30" autocomplete="off"></label>
+      <div class="field">アイコン</div>
+      <div id="lookIcons" class="icon-grid"></div>
+      <label class="button">画像を選ぶ<input id="lookIconFile" type="file" accept="image/*" hidden></label>
+      <label class="field">配色
+        <select id="lookTheme">
+          <option value="auto">自動（端末に合わせる）</option>
+          <option value="light">ライト</option>
+          <option value="dark">ダーク</option>
+        </select>
+      </label>
+      <div class="row"><button id="lookReset">元に戻す</button></div>
+      <p class="muted"><b>iPhone</b>：ホーム画面の名前とアイコンは、追加したときの内容で固定されます。変えるには、削除して「ホーム画面に追加」し直してください。<b>削除するとこのアプリのデータ（合言葉・読み込んだデータ）も消えます</b>（データは「最新データを取得」で取り直せます）。</p>
+      <p class="muted"><b>Android</b>：ホーム画面の名前とアイコンは、既定のままです（アプリの中の表示は変わります）。</p>
+    </div>
+    <div class="card">
+      <h2>ホーム画面に追加</h2>
+      <button id="installBtn" class="primary" hidden>アプリとしてインストール</button>
+      <p class="muted"><b>Android（Chrome）</b>：メニュー（︙）→「ホーム画面に追加」または「アプリをインストール」</p>
+      <p class="muted"><b>iPhone（Safari）</b>：共有ボタン →「ホーム画面に追加」</p>
+    </div>
+  </section>
+  <!-- アドレス一覧（設定タブから開く） -->
+  <section id="tab-book" class="tab" hidden>
+    <div class="row"><button id="backFromBook" type="button">← 設定に戻る</button></div>
+    <h2 class="sec">アドレス一覧</h2>
+    <p class="muted">名前はこの端末の中だけに保存され、外部には送られません。取引一覧の相手先を押しても名前を付けられます。</p>
+    <p id="bookCount" class="muted"></p>
+    <ul id="bookList" class="booklist"></ul>
+    <div class="card">
+      <h2>バックアップ</h2>
+      <p class="muted">機種変更や、端末のデータが消えたときに備えて、名前をファイルに書き出しておけます。</p>
+      <div class="row">
+        <button id="bookExportBtn" class="primary">書き出し</button>
+        <label class="button">読み込み<input id="bookImportFile" type="file" accept="application/json,.json" hidden></label>
+      </div>
+    </div>
+  </section>
+</main>
+
+<dialog id="nameDlg">
+  <form method="dialog">
+    <h2>名前を付ける</h2>
+    <p id="dlgAddr" class="mono"></p>
+    <label class="field">名前（空欄にすると削除） <input id="dlgName" autocomplete="off" maxlength="40"></label>
+    <div class="row">
+      <button value="save" class="primary">保存</button>
+      <button value="cancel" formnovalidate>やめる</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="passDlg">
+  <form method="dialog">
+    <h2>合言葉を入力</h2>
+    <p class="muted">このデータファイルは暗号化されています。合言葉は端末の外には送られません。</p>
+    <label class="field">合言葉 <input id="passInput" type="password" autocomplete="off" spellcheck="false"></label>
+    <label class="check"><input id="passSave" type="checkbox" checked> この端末に合言葉を保存する（次回から入力不要）</label>
+    <div class="row">
+      <button value="ok" class="primary">開く</button>
+      <button value="cancel" formnovalidate>やめる</button>
+    </div>
+  </form>
+</dialog>
+
+<script src="version.js"></script>
+<script src="drive.js"></script>
+<script src="core.js"></script>
+<script src="reward.js"></script>
+<script src="chart.js"></script>
+<script src="views.js"></script>
+<script src="book.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

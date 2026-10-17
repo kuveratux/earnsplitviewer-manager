@@ -1,0 +1,16 @@
+{
+  "name": "EARN SPLIT VIEWER Manager",
+  "short_name": "ESV Manager",
+  "description": "報酬・収益の分配の内訳（全量）を表示します。",
+  "lang": "ja",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#123029",
+  "theme_color": "#123029",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
