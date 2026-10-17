@@ -26,9 +26,9 @@
 </header>
 
 <nav class="tabs" role="tablist">
-  <button role="tab" data-tab="tx" aria-selected="true">取引</button>
-  <button role="tab" data-tab="reward">報酬</button>
-  <button role="tab" data-tab="settings">設定</button>
+  <button role="tab" data-tab="reward" aria-selected="true">報酬</button>
+  <button role="tab" data-tab="tx" aria-selected="false">取引</button>
+  <button role="tab" data-tab="settings" aria-selected="false">設定</button>
 </nav>
 
 <div id="updateNote" class="note update" hidden>新しいバージョンがあります。<button id="reloadBtn" class="primary">更新する</button></div>
@@ -36,17 +36,12 @@
   <div id="dummyNote" class="note" hidden>表示しているのは動作確認用のダミーデータです。</div>
 
   <!-- 取引 -->
-  <section id="tab-tx" class="tab">
+  <section id="tab-tx" class="tab" hidden>
     <div class="card whenEmpty" hidden>
       <h2>データがありません</h2>
-      <p class="muted">データを取得すると、取引が表示されます。</p>
-      <div class="row">
-        <button class="primary driveFetch driveOnly" hidden>最新データを取得</button>
-        <label class="button">ファイルから読み込む<input class="dataFile" type="file" accept="application/json,.json" multiple hidden></label>
-      </div>
+      <p class="muted">「設定」タブの「最新データを取得」（またはファイルから読み込む）で、データを読み込んでください。</p>
     </div>
     <div class="whenData" hidden>
-      <div class="row driveOnly" hidden><button class="primary driveFetch">最新データを取得</button></div>
       <div id="splitCard"></div>
       <h2 class="sec">区分別</h2>
       <div class="scroll"><table id="clsTable" class="grid"></table></div>
@@ -67,8 +62,11 @@
   </section>
 
   <!-- 報酬 -->
-  <section id="tab-reward" class="tab" hidden>
-    <p class="muted whenEmpty" hidden>データを読み込むと、報酬が表示されます。</p>
+  <section id="tab-reward" class="tab">
+    <div class="card whenEmpty" hidden>
+      <h2>データがありません</h2>
+      <p class="muted">「設定」タブの「最新データを取得」（またはファイルから読み込む）で、データとランク表を読み込んでください。</p>
+    </div>
     <div class="whenData" hidden>
       <div id="rewardNote" class="note" hidden></div>
       <div id="rewardBody">
