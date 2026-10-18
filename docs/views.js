@@ -62,6 +62,11 @@ function renderTxTab(opts) {
 // who：[{ id, name, share（預入枚数） }]。Manager は2人分と合算、Agent は自分だけ。グラフの対象もこの並び
 //--------------------------------------------------------------
 let rewardMode = 'simple';
+
+// 報酬タブの枚数は横幅を取らないよう切り捨てて表示する（ユーザー指示）
+// 大きい数字は整数、小さくなりうる「1日あたり」「期間の報酬」は小数2桁まで。計算の誤差（7199.9999…）で1つ少なく出ないよう、わずかに足してから切り捨てる
+const fmtInt = (v) => Math.floor(Number(v) + 1e-9).toLocaleString('ja-JP');
+const fmtDec2 = (v) => (Math.floor(Number(v) * 100 + 1e-7) / 100).toLocaleString('ja-JP', { maximumFractionDigits: 2 });
 let rewardWho = '';
 
 // showTotal：合計枚数と割合を表示するか（Manager は表示、Agent は表示しない）
@@ -84,15 +89,15 @@ function renderRewardTab(who, showTotal = true) {
   $('rewardCards').replaceChildren(...who.map((w) => {
     const reward = w.share * s.factor;
     const rows = [
-      ['預入枚数', fmtAmount(w.share) + (showTotal && w.share !== s.total ? '（合計 ' + fmtAmount(s.total) + ' の ' + pct(w.share / s.total) + '）' : '')],
-      ['報酬枚数', fmtAmount(reward) + '（1日 ' + fmtAmount(w.share * s.rateNow / 365) + '）'],
+      ['預入枚数', fmtInt(w.share) + (showTotal && w.share !== s.total ? '（合計 ' + fmtInt(s.total) + ' の ' + pct(w.share / s.total) + '）' : '')],
+      ['報酬枚数', fmtInt(reward) + '（1日 ' + fmtDec2(w.share * s.rateNow / 365) + '）'],
       ['　旧ランク表', rankText(s.rankOld, s.rateOld) + ' × ' + s.oldDays + ' 日'],
       ['　新ランク表', rankText(s.rankNew, s.rateNew) + ' × ' + s.newDays + ' 日'],
       ['経過日数', s.days + ' 日（1日目：' + fmtDate(s.firstDay) + '）'],
       ['預入日時', fmtDate(split.t)],
     ];
     return el('div', { class: 'card wide' }, el('div', { class: 'sym' }, w.name + ' の枚数（預入＋報酬）'),
-      el('div', { class: 'val' }, fmtAmount(w.share + reward), el('small', {}, sym)),
+      el('div', { class: 'val' }, fmtInt(w.share + reward), el('small', {}, sym)),
       el('div', { class: 'bal-extra' }, ...rows.flatMap(([k, v]) => [el('span', {}, k), el('b', {}, v)])));
   }));
 
@@ -112,7 +117,7 @@ function renderRewardTab(who, showTotal = true) {
   const label = (p) => (p.month === 0 ? '今日' : p.month % 12 === 0 ? (p.month / 12) + '年後' : p.month + 'か月後') + '（' + fmtDay(p.t) + '）';
   const points = proj[rewardMode].map((p) => ({ v: target.share * p.g, label: label(p) }));
   drawLineChart($('rewardChart'), points, {
-    unit: sym, xTicks: [[0, '今日'], [12, '1年後'], [24, '2年後'], [36, '3年後']],
+    unit: sym, fmt: fmtInt, xTicks: [[0, '今日'], [12, '1年後'], [24, '2年後'], [36, '3年後']],
     title: target.name + ' の枚数の見込み（' + (rewardMode === 'simple' ? '単利' : '複利') + '）',
   });
 
@@ -121,7 +126,7 @@ function renderRewardTab(who, showTotal = true) {
   const td = (t, n) => el('td', n ? { class: 'n' } : {}, t);
   $('rewardTable').replaceChildren(
     el('tr', {}, th('時点'), th('単利（' + sym + '）', 1), th('複利（' + sym + '）', 1)),
-    ...[0, 12, 24, 36].map((m) => el('tr', {}, td(label(proj.simple[m])), td(fmtAmount(target.share * proj.simple[m].g), 1), td(fmtAmount(target.share * proj.compound[m].g), 1))));
+    ...[0, 12, 24, 36].map((m) => el('tr', {}, td(label(proj.simple[m])), td(fmtInt(target.share * proj.simple[m].g), 1), td(fmtInt(target.share * proj.compound[m].g), 1))));
 }
 
 //--------------------------------------------------------------
@@ -147,9 +152,9 @@ function renderAsset(who, s) {
     const reward = w.share * s.rateNow / 365 * per.days;
     return el('div', { class: 'asset-item' }, el('div', { class: 'asset-name' }, w.name),
       el('div', { class: 'kv kv-plain' }, ...kvRows([
-        ['枚数（預入＋報酬）', fmtAmount(coins) + ' ' + sym],
+        ['枚数（預入＋報酬）', fmtInt(coins) + ' ' + sym],
         ['資産額', price ? fmtYen(coins * price) : na],
-        ['報酬（' + per.label + '）', fmtAmount(reward) + ' ' + sym + (price ? '（' + fmtYen(reward * price) + '）' : '')],
+        ['報酬（' + per.label + '）', fmtDec2(reward) + ' ' + sym + (price ? '（' + fmtYen(reward * price) + '）' : '')],
       ])));
   }));
 }

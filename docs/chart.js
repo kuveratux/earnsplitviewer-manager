@@ -29,7 +29,8 @@ function niceTicks(min, max) {
 const fmtShort = (v) => Number(v).toLocaleString('ja-JP', { maximumFractionDigits: v >= 1000 ? 0 : 2 });
 
 // box：描く場所（div）。points：[{ label（横軸・吹き出し用）, v }]。xTicks：目盛りを付ける点の番号と文字 [[i, '1年後'], …]
-function drawLineChart(box, points, { xTicks = [], unit = '', title = '' } = {}) {
+// fmt：吹き出しと最後の点の値の書式（省略時は fmtAmount）
+function drawLineChart(box, points, { xTicks = [], unit = '', title = '', fmt = fmtAmount } = {}) {
   const W = Math.max(280, Math.floor(box.clientWidth || 340));
   const H = 220;
   const pad = { l: 64, r: 16, t: 16, b: 28 };
@@ -47,7 +48,7 @@ function drawLineChart(box, points, { xTicks = [], unit = '', title = '' } = {})
   const path = svg('path', { d: points.map((p, i) => (i ? 'L' : 'M') + x(i).toFixed(1) + ' ' + y(p.v).toFixed(1)).join(' '), class: 'ch-line' });
   const last = points[points.length - 1];
   const endDot = svg('circle', { cx: x(points.length - 1), cy: y(last.v), r: 4, class: 'ch-dot' });
-  const endLabel = svg('text', { x: x(points.length - 1) - 6, y: y(last.v) - 10, class: 'ch-endlabel', 'text-anchor': 'end' }, fmtShort(last.v) + (unit ? ' ' + unit : ''));
+  const endLabel = svg('text', { x: x(points.length - 1) - 6, y: y(last.v) - 10, class: 'ch-endlabel', 'text-anchor': 'end' }, fmt(last.v) + (unit ? ' ' + unit : ''));
 
   const hair = svg('line', { y1: pad.t, y2: H - pad.b, class: 'ch-hair', visibility: 'hidden' });
   const hot = svg('circle', { r: 5, class: 'ch-dot ch-hot', visibility: 'hidden' });
@@ -62,7 +63,7 @@ function drawLineChart(box, points, { xTicks = [], unit = '', title = '' } = {})
     const p = points[cur];
     hair.setAttribute('x1', x(cur)); hair.setAttribute('x2', x(cur)); hair.setAttribute('visibility', 'visible');
     hot.setAttribute('cx', x(cur)); hot.setAttribute('cy', y(p.v)); hot.setAttribute('visibility', 'visible');
-    tip.replaceChildren(el('b', {}, fmtAmount(p.v) + (unit ? ' ' + unit : '')), el('span', {}, p.label));
+    tip.replaceChildren(el('b', {}, fmt(p.v) + (unit ? ' ' + unit : '')), el('span', {}, p.label));
     tip.hidden = false;
     const left = Math.min(Math.max(x(cur) - 70, 0), W - 140);
     tip.style.left = left + 'px';
