@@ -27,7 +27,8 @@
 
 <nav class="tabs" role="tablist">
   <button role="tab" data-tab="reward" aria-selected="true">報酬</button>
-  <button role="tab" data-tab="tx" aria-selected="false">取引</button>
+  <button role="tab" data-tab="asset" aria-selected="false">資産</button>
+  <button role="tab" data-tab="tx" aria-selected="false">取引履歴</button>
   <button role="tab" data-tab="settings" aria-selected="false">設定</button>
 </nav>
 
@@ -45,7 +46,7 @@
       <div id="splitCard"></div>
       <h2 class="sec">区分別</h2>
       <div class="scroll"><table id="clsTable" class="grid"></table></div>
-      <h2 class="sec">取引</h2>
+      <h2 class="sec">取引履歴</h2>
       <div class="filters">
         <label>区分 <select id="clsSel"></select></label>
         <label>向き
@@ -72,21 +73,6 @@
       <div id="rewardBody">
         <p id="rewardAsOf" class="muted"></p>
         <div id="rewardCards" class="cards"></div>
-        <h2 class="sec">資産額</h2>
-        <div class="card">
-          <label class="field">1枚あたりの金額（円）<input id="priceInput" type="number" inputmode="decimal" min="0" step="any" placeholder="例：12.5"></label>
-          <p id="assetRate" class="muted"></p>
-          <div class="chart-controls">
-            <div id="periodSeg" class="seg" role="group" aria-label="報酬の期間">
-              <button type="button" data-period="day" aria-pressed="true">日</button>
-              <button type="button" data-period="week" aria-pressed="false">週</button>
-              <button type="button" data-period="month" aria-pressed="false">月</button>
-              <button type="button" data-period="year" aria-pressed="false">年</button>
-            </div>
-          </div>
-          <div id="assetList"></div>
-          <p class="muted">資産額＝枚数（預入＋報酬）×1枚あたりの金額。報酬は今の年利で計算した目安です（月＝年÷12）。金額はこの端末だけに保存されます。</p>
-        </div>
         <h2 class="sec">3年後までの見込み</h2>
         <div class="chart-controls">
           <div id="modeSeg" class="seg" role="group" aria-label="計算方法">
@@ -99,6 +85,34 @@
         <h2 class="sec">見込みの一覧</h2>
         <div class="scroll"><table id="rewardTable" class="grid"></table></div>
         <p class="muted">単利：毎日、預入枚数×年利÷365 を足します。複利：毎日、その時点の枚数×年利÷365 を足し、枚数が増えてランクが上がったら年利も上げます。見込みは新ランク表の年利で計算します（ランク表が変わらない前提の目安です）。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 資産 -->
+  <section id="tab-asset" class="tab" hidden>
+    <div class="card whenEmpty" hidden>
+      <h2>データがありません</h2>
+      <p class="muted">「設定」タブの「最新データを取得」（またはファイルから読み込む）で、データとランク表を読み込んでください。</p>
+    </div>
+    <div class="whenData" hidden>
+      <div id="assetNote" class="note" hidden></div>
+      <div id="assetBody">
+        <h2 class="sec">資産額</h2>
+    <div class="card">
+      <label class="field">1枚あたりの金額（円）<input id="priceInput" type="number" inputmode="decimal" min="0" step="any" placeholder="例：12.5"></label>
+      <p id="assetRate" class="muted"></p>
+      <div class="chart-controls">
+        <div id="periodSeg" class="seg" role="group" aria-label="報酬の期間">
+          <button type="button" data-period="day" aria-pressed="true">日</button>
+          <button type="button" data-period="week" aria-pressed="false">週</button>
+          <button type="button" data-period="month" aria-pressed="false">月</button>
+          <button type="button" data-period="year" aria-pressed="false">年</button>
+        </div>
+      </div>
+      <div id="assetList"></div>
+      <p class="muted">資産額＝枚数（預入＋報酬）×1枚あたりの金額。報酬は今の年利で計算した目安です（月＝年÷12）。金額はこの端末だけに保存されます。</p>
+    </div>
       </div>
     </div>
   </section>
@@ -133,24 +147,6 @@
       <h2>このアプリについて</h2>
       <p>バージョン：<b id="appVersion"></b></p>
       <div class="row"><button id="updateBtn">更新を確認</button></div>
-    </div>
-    <div class="card">
-      <h2>表示と配色</h2>
-      <p class="muted">この端末だけの設定です。</p>
-      <label class="field">表示名（空欄なら既定の名前）<input id="lookName" maxlength="30" autocomplete="off"></label>
-      <div class="field">アイコン</div>
-      <div id="lookIcons" class="icon-grid"></div>
-      <label class="button">画像を選ぶ<input id="lookIconFile" type="file" accept="image/*" hidden></label>
-      <label class="field">配色
-        <select id="lookTheme">
-          <option value="auto">自動（端末に合わせる）</option>
-          <option value="light">ライト</option>
-          <option value="dark">ダーク</option>
-        </select>
-      </label>
-      <div class="row"><button id="lookReset">元に戻す</button></div>
-      <p class="muted"><b>iPhone</b>：ホーム画面の名前とアイコンは、追加したときの内容で固定されます。変えるには、削除して「ホーム画面に追加」し直してください。<b>削除するとこのアプリのデータ（合言葉・読み込んだデータ）も消えます</b>（データは「最新データを取得」で取り直せます）。</p>
-      <p class="muted"><b>Android</b>：ホーム画面の名前とアイコンは、既定のままです（アプリの中の表示は変わります）。</p>
     </div>
     <div class="card">
       <h2>ホーム画面に追加</h2>

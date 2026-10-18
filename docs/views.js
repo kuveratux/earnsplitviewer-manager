@@ -78,6 +78,10 @@ function renderRewardTab(who, showTotal = true) {
   $('rewardNote').textContent = !split ? '「分配」に仕分けた取引がないため、報酬は計算していません。'
     : 'ランク表（旧・新）が読み込まれていないため、報酬を計算できません。「設定」で読み込んでください。';
   $('rewardBody').hidden = !ok;
+  // 資産タブも同じ条件（預入とランク表がないと、枚数を計算できない）
+  $('assetNote').hidden = !!ok;
+  $('assetNote').textContent = $('rewardNote').textContent;
+  $('assetBody').hidden = !ok;
   if (!ok) return;
 
   const now = Math.floor(Date.now() / 1000);
@@ -130,7 +134,7 @@ function renderRewardTab(who, showTotal = true) {
 }
 
 //--------------------------------------------------------------
-// 資産額：1枚あたりの金額（円。端末ごとに保存）× 総枚数（預入＋報酬）と、報酬の 日・週・月・年
+// 資産タブ：1枚あたりの金額（円。端末ごとに保存）× 総枚数（預入＋報酬）と、報酬の 日・週・月・年
 // 報酬は今の年利（Reward.settled の rateNow）で計算した目安。月＝年÷12
 //--------------------------------------------------------------
 let price = 0;

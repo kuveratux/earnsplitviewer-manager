@@ -337,53 +337,6 @@ function showStatus() {
 }
 
 //--------------------------------------------------------------
-// 表示と配色（表示名・アイコン・配色）。反映の処理は appearance.js
-//--------------------------------------------------------------
-let look = Object.assign({}, APPEARANCE_DEFAULT);
-
-async function saveLook() {
-  await putSetting('appearance', look);
-  cacheAppearance(look);
-  applyAppearance(look);
-  renderLook();
-}
-
-function renderLook() {
-  if (document.activeElement !== $('lookName')) $('lookName').value = look.name || '';
-  $('lookName').placeholder = APP_NAME_DEFAULT;
-  $('lookTheme').value = look.theme || 'auto';
-  const opts = ICON_PRESETS.map((p) => ({ icon: { type: 'preset', id: p.id }, label: p.label }));
-  if (look.icon && look.icon.type === 'custom') opts.push({ icon: look.icon, label: '選んだ画像' });
-  const same = (a, b) => a.type === b.type && (a.type === 'custom' || a.id === b.id);
-  $('lookIcons').replaceChildren(...opts.map((o) => el('button', { type: 'button', class: 'icon-opt', 'aria-pressed': String(same(o.icon, look.icon || APPEARANCE_DEFAULT.icon)), onclick: async () => { look.icon = o.icon; await saveLook(); } },
-    el('img', { src: iconUrl(o.icon), alt: '' }), o.label)));
-}
-
-$('lookName').addEventListener('change', async () => { look.name = $('lookName').value.trim(); await saveLook(); });
-$('lookTheme').addEventListener('change', async () => { look.theme = $('lookTheme').value; await saveLook(); });
-$('lookReset').addEventListener('click', async () => { look = Object.assign({}, APPEARANCE_DEFAULT); await saveLook(); });
-
-// 手持ちの画像：中央を正方形に切り抜き、180×180 の PNG にして端末に保存する
-$('lookIconFile').addEventListener('change', async (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
-  try {
-    // CSP で blob: の画像は許可していないので、data: URL にして読み込む（選択を消すのは読み終えてから）
-    const url = await new Promise((resolve, reject) => { const r = new FileReader(); r.onload = () => resolve(r.result); r.onerror = () => reject(new Error('画像を読み込めませんでした')); r.readAsDataURL(file); });
-    e.target.value = '';
-    const img = await new Promise((resolve, reject) => { const i = new Image(); i.onload = () => resolve(i); i.onerror = () => reject(new Error('画像を読み込めませんでした（対応していない形式の可能性があります）')); i.src = url; });
-    const side = Math.min(img.naturalWidth, img.naturalHeight);
-    const c = document.createElement('canvas');
-    c.width = c.height = 180;
-    c.getContext('2d').drawImage(img, (img.naturalWidth - side) / 2, (img.naturalHeight - side) / 2, side, side, 0, 0, 180, 180);
-    look.icon = { type: 'custom', data: c.toDataURL('image/png') };
-    await saveLook();
-  } catch (err) {
-    alert(err.message);
-  }
-});
-
-//--------------------------------------------------------------
 // 保存の持続化・インストール
 //--------------------------------------------------------------
 async function showStorageInfo() {
@@ -429,7 +382,6 @@ function refreshAll() {
     : 'データ：まだ読み込んでいません。') +
     '　旧ランク表：' + (ranks.old ? ranks.old.fileName : '未読み込み') +
     '　新ランク表：' + (ranks.new ? ranks.new.fileName + '（開始日 ' + ranks.new.startDate + '）' : '未読み込み');
-  renderLook();
   renderDriveInfo();
   showStatus();
 }
@@ -484,9 +436,9 @@ const ESV = {
     hooks = Object.assign(hooks, h);
     if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(console.error);
     await loadSavedData();
-    look = Object.assign({}, APPEARANCE_DEFAULT, (await getSetting('appearance')) || {});
-    cacheAppearance(look);
-    applyAppearance(look);
+    // 表示と配色の設定はなくした（2026-10 ユーザー指示）。以前に端末で変えていた設定は消して、標準に戻す
+    applyAppearance(APPEARANCE_DEFAULT);
+    delSetting('appearance').catch(() => { /* なくてもよい */ });
     for (const f of ESV.loaders) await f();
     if (h.init) await h.init();
     refreshAll();

@@ -28,12 +28,6 @@ const SHELL_FILES = [
   'icons/icon-192.png',
   'icons/icon-512.png',
   'icons/icon-512-maskable.png',
-  'icons/presets/exchange.png',
-  'icons/presets/candle.png',
-  'icons/presets/trend.png',
-  'icons/presets/chain.png',
-  'icons/presets/gold.png',
-  'icons/presets/classic.png',
 ];
 
 self.addEventListener('install', (e) => {
