@@ -201,10 +201,16 @@ let driveBusy = false;
 // 足りない枠があれば、取得のときに1つずつ選んでもらう。選び直しは枠ごと
 const SLOTS = [
   { key: 'data', label: () => SCOPE_LABEL[APP.dataScope] + ' 用のデータ', hint: () => 'esv_' + APP.dataScope + '_latest.json' },
-  { key: 'rankOld', label: () => '旧ランク表', hint: () => 'esv_rank_old.json' },
-  { key: 'rankNew', label: () => '新ランク表', hint: () => 'esv_rank_new.json' },
+  { key: 'rankOld', label: () => '旧ランク表', hint: () => 'esv_' + APP.dataScope + '_rank_old.json' },
+  { key: 'rankNew', label: () => '新ランク表', hint: () => 'esv_' + APP.dataScope + '_rank_new.json' },
 ];
 const slotOf = (key) => SLOTS.find((x) => x.key === key);
+
+// ファイル名に、このアプリの名前（manager / agent）が入っているか。入っていなければ開く前に断る
+// （他方の合言葉で暗号化されたファイルを開こうとして、合言葉を聞かれたり、保存した合言葉が置き換わったりしないように）
+const nameFits = (name) => String(name || '').toLowerCase().includes(APP.dataScope);
+const nameError = (name) => '「' + name + '」は ' + SCOPE_LABEL[APP.dataScope] + ' 用のファイルではないようです（ファイル名に ' + APP.dataScope + ' が入っていません）。' +
+  SCOPE_LABEL[APP.dataScope] + ' フォルダのファイル（例：esv_' + APP.dataScope + '_rank_old.json）を選んでください。'
 
 async function getSlots() {
   return (await getSetting('driveSlots')) || {};
@@ -222,9 +228,10 @@ async function driveImportOne(file) {
 async function pickSlot(key, msgs) {
   const slot = slotOf(key);
   $('status').textContent = slot.label() + 'を選択中…';
-  const picked = await Drive.pick(slot.label() + 'のファイル（' + slot.hint() + '）を選んでください');
+  const picked = await Drive.pick(slot.label() + 'のファイル（' + slot.hint() + '）を選んでください', false, 'esv_' + APP.dataScope);
   if (!picked || !picked.length) return null;
   const file = picked[0];
+  if (!nameFits(file.name)) { msgs.push(nameError(file.name)); return 'cancel'; }
   $('status').textContent = slot.label() + 'を取得中…';
   const r = await driveImportOne(file);
   if (!r.kind) return 'cancel'; // 合言葉の入力をやめた
@@ -254,6 +261,13 @@ async function fetchFromDrive(pickKey) {
       for (const slot of SLOTS) {
         const file = slots[slot.key];
         if (!file) continue;
+        if (!nameFits(file.name)) {
+          // 以前に選んだ、名前の合わないファイル（例：名前を分ける前の esv_rank_old.json）は外して選び直してもらう
+          delete slots[slot.key];
+          await putSetting('driveSlots', slots);
+          msgs.push(slot.label() + '：' + nameError(file.name));
+          continue;
+        }
         $('status').textContent = slot.label() + 'を取得中…';
         try {
           const r = await driveImportOne(file);

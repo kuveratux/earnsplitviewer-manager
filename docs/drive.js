@@ -69,11 +69,13 @@ const Drive = (() => {
   }
 
   // ファイルを選ぶ（初回・ファイルを変えるとき）。[{ id, name }] を返す（multi なら複数選べる）。キャンセル時は null
-  async function pick(title, multi) {
+  // query：最初からこの文字で絞り込んで表示する（例：esv_manager）
+  async function pick(title, multi, query) {
     const accessToken = await getToken();
     return new Promise((resolve) => {
       const mine = new google.picker.DocsView(google.picker.ViewId.DOCS).setIncludeFolders(true).setMode(google.picker.DocsViewMode.LIST);
       const shared = new google.picker.DocsView(google.picker.ViewId.DOCS).setIncludeFolders(true).setOwnedByMe(false).setMode(google.picker.DocsViewMode.LIST);
+      if (query) { mine.setQuery(query); shared.setQuery(query); }
       const builder = new google.picker.PickerBuilder()
         .setOAuthToken(accessToken)
         .setDeveloperKey(GOOGLE.apiKey)
