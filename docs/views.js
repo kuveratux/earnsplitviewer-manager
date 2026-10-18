@@ -119,8 +119,8 @@ function renderRewardTab(who, showTotal = true, opts = {}) {
     d.addEventListener('toggle', () => { if (d.open) openFolds.add(key); else openFolds.delete(key); });
     return el('div', { class: 'card asset-hero' },
       el('div', { class: 'sym' }, multi ? '保有枚数（' + labelOf_(w) + '）' : '保有枚数'),
-      el('div', { class: 'hero-row' }, el('span', { class: 'hero-val' }, fmtInt(w.share + reward) + ' ' + sym),
-        coinIcons[w.id] ? el('img', { class: 'coin-icon', src: coinIcons[w.id], alt: '' }) : null),
+      el('div', { class: 'hero-row' }, coinIcons[w.id] ? el('img', { class: 'coin-icon', src: coinIcons[w.id], alt: '' }) : null,
+        el('span', { class: 'hero-val' }, fmtInt(w.share + reward) + ' ' + sym)),
       el('div', { class: 'hero-folds' }, d));
   }));
 
@@ -327,7 +327,7 @@ $('withdrawInput').addEventListener('change', async () => {
   await putSetting('withdraw', withdraw);
   refreshAll();
 });
-// ---- コインのアイコン（報酬タブの保有枚数の右側。スマホの中の画像を選んで設定し、この端末の中だけに保存）
+// ---- コインのアイコン（報酬タブの保有枚数の数値の前。スマホの中の画像を選んで設定し、この端末の中だけに保存）
 // Manager は 合算・Manager・Agent の3つ、Agent は自分の1つ。画像は元の形のまま、長い辺を 160px に縮めた PNG（データ URL）で持つ
 let coinIcons = {};
 let coinPick = null; // 画像を選んでいる枠
