@@ -384,27 +384,57 @@ document.querySelectorAll('.tabs button').forEach((btn) => btn.addEventListener(
   document.querySelectorAll('.tab').forEach((s) => { s.hidden = s.id !== 'tab-' + btn.dataset.tab; });
 }));
 
-// 横にスワイプすると隣のタブへ（左へスワイプで右隣、右へで左隣）
-// 横の動きがはっきり大きいときだけ。入力欄・グラフ・横にスクロールできる表の上、アドレス一覧を開いているときは動かさない
+// 横にスワイプすると隣のタブへ（左へスワイプで右隣、右へで左隣）。ページは指についてきて、離すと次のページが横から滑り込む
+// 少しだけ動かしたときは元に戻る。両端のタブでは重く動いて戻る
+// 入力欄・グラフ・横にスクロールできる表の上、アドレス一覧を開いているときは動かさない
 (() => {
-  let sx = 0, sy = 0, st = 0, armed = false;
+  const SLIDE_MS = 220;
+  let sx = 0, sy = 0, st = 0, armed = false, mode = '', dx = 0, page = null, busy = false;
   const scrollsX = (e) => { for (let n = e; n && n !== document.body; n = n.parentElement) { if (n.scrollWidth > n.clientWidth + 1 && /(auto|scroll)/.test(getComputedStyle(n).overflowX)) return true; } return false; };
+  const btns = () => [...document.querySelectorAll('.tabs button')];
+  const curIndex = () => btns().findIndex((b) => b.getAttribute('aria-selected') === 'true');
+  const move = (el, x, ms) => { el.style.transition = ms ? 'transform ' + ms + 'ms ease-out' : 'none'; el.style.transform = x ? 'translateX(' + x + 'px)' : ''; };
+  const after = (ms) => new Promise((r) => setTimeout(r, ms + 20));
   document.addEventListener('touchstart', (ev) => {
-    armed = false;
-    if (ev.touches.length !== 1 || !$('tab-book').hidden) return;
+    armed = false; mode = ''; dx = 0;
+    if (busy || ev.touches.length !== 1 || !$('tab-book').hidden) return;
     const t = ev.target;
     if (t.closest('input, select, textarea, dialog, .ch-wrap, .tabs') || scrollsX(t)) return;
     sx = ev.touches[0].clientX; sy = ev.touches[0].clientY; st = Date.now(); armed = true;
+    page = document.querySelector('.tab:not([hidden])');
   }, { passive: true });
-  document.addEventListener('touchend', (ev) => {
-    if (!armed) return;
+  document.addEventListener('touchmove', (ev) => {
+    if (!armed || !page) return;
+    const mx = ev.touches[0].clientX - sx, my = ev.touches[0].clientY - sy;
+    if (!mode) {
+      if (Math.abs(mx) < 10 && Math.abs(my) < 10) return;
+      mode = Math.abs(mx) > Math.abs(my) * 1.5 ? 'x' : 'y'; // 最初の動きで、横（タブ移動）か縦（スクロール）かを決める
+    }
+    if (mode !== 'x') return;
+    ev.preventDefault(); // 横に動かしている間は、縦にスクロールさせない
+    const j = curIndex() + (mx < 0 ? 1 : -1);
+    dx = j >= 0 && j < btns().length ? mx : mx / 4; // 端のタブでは重く
+    move(page, dx, 0);
+  }, { passive: false });
+  document.addEventListener('touchend', async () => {
+    if (!armed || mode !== 'x' || !page) { armed = false; return; }
     armed = false;
-    const dx = ev.changedTouches[0].clientX - sx, dy = ev.changedTouches[0].clientY - sy;
-    if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 2 || Date.now() - st > 800) return;
-    const btns = [...document.querySelectorAll('.tabs button')];
-    const j = btns.findIndex((b) => b.getAttribute('aria-selected') === 'true') + (dx < 0 ? 1 : -1);
-    if (j >= 0 && j < btns.length) { btns[j].click(); window.scrollTo(0, 0); }
-  }, { passive: true });
+    const cur = page, w = window.innerWidth;
+    const j = curIndex() + (dx < 0 ? 1 : -1);
+    const fast = Math.abs(dx) > 30 && Date.now() - st < 250; // すばやく払ったときは短くても移る
+    if (j < 0 || j >= btns().length || (Math.abs(dx) < w * 0.25 && !fast)) { move(cur, 0, SLIDE_MS); await after(SLIDE_MS); move(cur, 0, 0); return; }
+    busy = true;
+    const dir = dx < 0 ? -1 : 1;
+    move(cur, dir * w, SLIDE_MS); // 今のページを外へ
+    await after(SLIDE_MS);
+    move(cur, 0, 0);
+    btns()[j].click();
+    window.scrollTo(0, 0);
+    const next = document.querySelector('.tab:not([hidden])');
+    if (next) { move(next, -dir * w, 0); next.getBoundingClientRect(); move(next, 0, SLIDE_MS); await after(SLIDE_MS); move(next, 0, 0); } // 次のページを反対側から
+    busy = false;
+  });
+  document.addEventListener('touchcancel', () => { if (armed && page) move(page, 0, SLIDE_MS); armed = false; });
 })();
 
 function refreshAll() {

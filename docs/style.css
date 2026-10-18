@@ -293,3 +293,8 @@ body { padding-bottom: 0; }
 .bar-icon { width: 32px; height: 32px; border-radius: 8px; margin-right: 10px; }
 .role { font-size: 12px; padding: 1px 8px; }
 .status { font-size: clamp(11px, 3.4vw, 14px); }
+/* 1.2.1：ヘッダのアイコンは背景を透明にした画像（縁や影を付けず、ヘッダの背景に溶け込ませる） */
+.bar-icon { border-radius: 0; box-shadow: none; }
+/* スワイプでページを横に動かす間、横のスクロールバーを出さない */
+main { overflow-x: clip; }
+.tab { will-change: transform; }

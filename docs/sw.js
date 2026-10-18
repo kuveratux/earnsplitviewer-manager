@@ -25,6 +25,7 @@ const SHELL_FILES = [
   'style.css',
   'manifest.webmanifest',
   'icons/icon-180.png',
+  'icons/bar-icon.png',
   'icons/icon-192.png',
   'icons/icon-512.png',
   'icons/icon-512-maskable.png',
