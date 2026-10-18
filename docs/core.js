@@ -331,9 +331,15 @@ $('forgetPassBtn').addEventListener('click', async () => {
 });
 
 function showStatus() {
-  $('status').textContent = data
-    ? '作成：' + new Date(data.generatedAt).toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })
-    : 'データ未読み込み';
+  // ヘッダの右側は日時だけ（狭い画面でタイトルと重ならないように）。「作成：」は補足（title）に出す
+  const st = $('status');
+  if (data) {
+    st.textContent = new Date(data.generatedAt).toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    st.title = 'データの作成日時：' + fmtJst(data.generatedAt);
+  } else {
+    st.textContent = '未読み込み';
+    st.title = 'データはまだ読み込んでいません';
+  }
 }
 
 //--------------------------------------------------------------

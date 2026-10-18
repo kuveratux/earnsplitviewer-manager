@@ -259,3 +259,15 @@ dialog::backdrop { background: rgba(0, 0, 0, .6); }
 /* 報酬枚数の2行目（1日あたり） */
 .per-day { font-size: .92em; font-weight: 600; color: var(--muted); }
 html { background: var(--bg); }
+/* ヘッダとタブはスクロールしても上に残す。ヘッダの左にアプリのアイコン */
+.topbar { position: sticky; top: 0; z-index: 5; }
+.topbar .tabs { position: static; }
+.bar-icon { width: 26px; height: 26px; border-radius: 7px; margin-right: 8px; flex: none; box-shadow: 0 0 0 1px rgba(185, 205, 240, .35), 0 0 10px rgba(90, 150, 255, .35); }
+/* Manager の設定：表示する対象と順番 */
+.order-check { flex: 1; display: flex; align-items: center; gap: 8px; }
+.order-check input { width: 18px; height: 18px; accent-color: var(--accent); }
+/* ヘッダ：タイトルと右側の日時が重ならないように */
+.bar .title { flex: 1 1 auto; overflow: hidden; }
+.bar h1 { font-size: clamp(12px, 3.9vw, 17px); overflow: hidden; text-overflow: ellipsis; }
+.role { margin-left: 6px; flex: none; }
+.status { flex: none; }

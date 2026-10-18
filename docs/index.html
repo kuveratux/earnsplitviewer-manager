@@ -21,8 +21,10 @@
 <script src="appearance.js"></script>
 </head>
 <body>
+<!-- ヘッダとタブ：スクロールしても上に残す -->
+<div class="topbar">
 <header class="bar">
-  <div class="title"><h1>EARN SPLIT VIEWER</h1><span class="role">Manager</span></div>
+  <div class="title"><img class="bar-icon" src="icons/icon-180.png" alt=""><h1>EARN SPLIT VIEWER</h1><span class="role">Manager</span></div>
   <span id="status" class="status"></span>
 </header>
 
@@ -32,6 +34,7 @@
   <button role="tab" data-tab="tx" aria-selected="false">取引履歴</button>
   <button role="tab" data-tab="settings" aria-selected="false">設定</button>
 </nav>
+</div>
 
 <div id="updateNote" class="note update" hidden>新しいバージョンがあります。<button id="reloadBtn" class="primary">更新する</button></div>
 <main>
@@ -158,6 +161,22 @@
         <button id="driveSignOutBtn">連携を解除</button>
         <button id="forgetPassBtn" hidden>保存した合言葉を削除</button>
       </div>
+    </div>
+    <div class="card">
+      <h2>名前の設定</h2>
+      <p class="muted">この端末だけの設定です（スマホの中にだけ保存し、データやプログラムには入れません）。空欄なら、データに入っている名前を使います。</p>
+      <label class="field">Manager の名前<input id="nameManager" maxlength="30" autocomplete="off"></label>
+      <label class="field">Agent の名前<input id="nameAgent" maxlength="30" autocomplete="off"></label>
+    </div>
+    <div class="card">
+      <h2>資産タブの表示</h2>
+      <p class="muted">表示する対象にチェックを入れ、↑↓で並べ替えます。一番上の資産額には、1番目の対象を表示します。</p>
+      <ul id="orderAsset" class="orderlist"></ul>
+    </div>
+    <div class="card">
+      <h2>保有枚数の表示</h2>
+      <p class="muted">報酬タブの保有枚数のカードに表示する対象と順番です。</p>
+      <ul id="orderReward" class="orderlist"></ul>
     </div>
     <div class="card">
       <h2>このアプリについて</h2>

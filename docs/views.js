@@ -70,7 +70,10 @@ const fmtDec2 = (v) => (Math.floor(Number(v) * 100 + 1e-7) / 100).toLocaleString
 let rewardWho = '';
 
 // showTotal：合計枚数と割合を表示するか（Manager は表示、Agent は表示しない）
-function renderRewardTab(who, showTotal = true) {
+// opts.rewardWho：保有枚数のカードに出す対象（順番どおり）、opts.assetWho：資産タブに出す対象。省略時は who のすべて
+// 運用シミュレーション・シミュレーションの対象の選択には、常に who のすべてを出す
+const labelOf_ = (w) => (w.id === 'total' ? '合算' : w.name);
+function renderRewardTab(who, showTotal = true, opts = {}) {
   const sym = data.token.symbol;
   const split = data.transfers.find((x) => x.cls === 'split');
   const ok = split && ranks.old && ranks.new;
@@ -90,13 +93,14 @@ function renderRewardTab(who, showTotal = true) {
   const rankText = (r, rate) => (r ? r.name + ' ' + pct(rate) : 'ランク外 0%');
 
   // 保有枚数（預入＋報酬）のカード。数字は資産タブの資産額と同じ大きさ。内訳は折りたたみ（最初は閉じる）
-  const multi = who.length > 1;
+  const multi = APP.id === 'manager'; // Manager は対象名を添える
+  const rewardList = opts.rewardWho || who;
   const newStart = Date.parse(ranks.new.startDate + 'T00:00:00+09:00') / 1000;
   // 旧ランク表の最終日・新ランク表の開始日（内訳の見出しを短くするため、月/日だけ。年は預入日時でわかる）
   const md = (unix) => { const d = new Date((unix + 9 * 3600) * 1000); return (d.getUTCMonth() + 1) + '/' + d.getUTCDate(); };
   const oldLast = md(newStart - Reward.DAY);
   const newFirst = md(newStart);
-  $('rewardCards').replaceChildren(...who.map((w) => {
+  $('rewardCards').replaceChildren(...(rewardList.length ? [] : [el('div', { class: 'card' }, el('p', { class: 'muted' }, '表示する対象がありません。「設定」の「保有枚数の表示」で選んでください。'))]), ...rewardList.map((w) => {
     const reward = w.share * s.factor;
     const rows = [
       ['預入枚数', fmtInt(w.share) + ' ' + sym + (showTotal && w.share !== s.total ? '（' + pct(w.share / s.total) + '）' : '')],
@@ -114,18 +118,19 @@ function renderRewardTab(who, showTotal = true) {
     d.open = openFolds.has(key);
     d.addEventListener('toggle', () => { if (d.open) openFolds.add(key); else openFolds.delete(key); });
     return el('div', { class: 'card asset-hero' },
-      el('div', { class: 'sym' }, multi ? '保有枚数（' + (w.id === 'total' ? '合算' : w.name) + '）' : '保有枚数'),
+      el('div', { class: 'sym' }, multi ? '保有枚数（' + labelOf_(w) + '）' : '保有枚数'),
       el('div', { class: 'hero-row' }, el('span', { class: 'hero-val' }, fmtInt(w.share + reward) + ' ' + sym)),
       el('div', { class: 'hero-folds' }, d));
   }));
 
-  renderAsset(who, s);
+  renderAsset(opts.assetWho || who, s, who);
 
   // 見込み：対象（Manager は Manager 分・Agent 分・合算を切り替え）
   const targets = who;
   const sel = $('whoSel');
   sel.hidden = targets.length < 2;
-  if (sel.options.length !== targets.length) sel.replaceChildren(...targets.map((t) => el('option', { value: t.id }, t.name)));
+  const tnames = targets.map((t) => t.name).join('|');
+  if (sel.dataset.names !== tnames) { sel.replaceChildren(...targets.map((t) => el('option', { value: t.id }, t.name))); sel.dataset.names = tnames; }
   if (!targets.some((t) => t.id === rewardWho)) rewardWho = targets[0].id;
   sel.value = rewardWho;
   const target = targets.find((t) => t.id === rewardWho);
@@ -188,7 +193,8 @@ function purchasesOf(id) {
 let simWho = '';
 const openFolds = new Set(); // 開いている内訳（描き直しても開いたままにする）
 
-function renderAsset(who, s) {
+// who：一番上と内訳に出す対象（順番どおり。一番上はその1番目）、all：シミュレーションの対象の選択に出す対象
+function renderAsset(who, s, all = who) {
   const sym = data.token.symbol;
   const price = Number(data.price) || 0;
   const per = PERIODS[assetPeriod];
@@ -209,9 +215,13 @@ function renderAsset(who, s) {
   eye.innerHTML = showYen ? EYE_ON : EYE_OFF; // 固定の図形だけ（データは入れない）
   eye.setAttribute('aria-pressed', String(showYen));
   eye.setAttribute('aria-label', showYen ? '金額を隠す' : '金額を表示する');
-  {
+  if (!who.length) {
+    $('heroLabel').textContent = '資産額';
+    $('heroValue').textContent = '—';
+    $('heroSub').textContent = '表示する対象がありません。「設定」の「資産タブの表示」で選んでください。';
+  } else {
     const c = calc(who[0]);
-    $('heroLabel').textContent = who.length > 1 ? '資産額（合算）' : '資産額';
+    $('heroLabel').textContent = APP.id === 'manager' ? '資産額（' + labelOf_(who[0]) + '）' : '資産額';
     $('heroValue').textContent = price ? yen(c.coins * price) : '—';
     $('heroSub').textContent = !price ? '現在価格が未設定のため、資産額は表示できません'
       : c.cost > 0 ? '含み損益 ' + gain(c, price) : '購入の記録はありません';
@@ -229,7 +239,7 @@ function renderAsset(who, s) {
       ['総枚数の平均単価', c.coins > 0 && c.buys.length ? yenUnit(c.cost / c.coins) : na],
     ];
     // 見出し：Manager は対象の名前と資産額、Agent は「内訳」だけ（一番上の資産額と同じなので）
-    const multi = who.length > 1;
+    const multi = APP.id === 'manager';
     const d = el('details', { class: 'fold' },
       el('summary', {}, el('span', {}, multi ? w.name : '内訳'), multi ? el('span', { class: 'fold-val' }, price ? yen(c.coins * price) : fmtInt(c.coins) + ' ' + sym) : null),
       el('div', { class: 'fold-body' }, el('div', { class: 'kv kv-plain' }, ...kvRows(rows))));
@@ -257,11 +267,13 @@ function renderAsset(who, s) {
   $('assetPrice').textContent = '現在価格：' + (price ? yenUnit(price) : '未設定');
   $('rateNow').textContent = s.rankNow ? s.rankNow.name + ' ' + pct(s.rateNow) : 'ランク外 0%';
   if ($('simSel')) {
-    if ($('simSel').options.length !== who.length) $('simSel').replaceChildren(...who.map((w) => el('option', { value: w.id }, w.name)));
-    if (!who.some((w) => w.id === simWho)) simWho = who[0].id;
+    // 名前が変わったときにも作り直す
+    const names = all.map((w) => w.name).join('|');
+    if ($('simSel').dataset.names !== names) { $('simSel').replaceChildren(...all.map((w) => el('option', { value: w.id }, w.name))); $('simSel').dataset.names = names; }
+    if (!all.some((w) => w.id === simWho)) simWho = all[0].id;
     $('simSel').value = simWho;
   }
-  const target = who.find((w) => w.id === simWho) || who[0];
+  const target = all.find((w) => w.id === simWho) || all[0];
   const c = calc(target);
   const th = (t, n) => el('th', n ? { class: 'n' } : {}, t);
   const cell = (main, sub) => el('td', { class: 'n' }, main, sub ? el('div', { class: 'sim-sub' }, sub) : null);
