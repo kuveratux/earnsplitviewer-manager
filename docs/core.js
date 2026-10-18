@@ -344,7 +344,7 @@ $('forgetPassBtn').addEventListener('click', async () => {
 function showStatus() {
   // ヘッダの右側はアプリのバージョン（取得中などは、そのときだけ「取得中…」などを出す）
   const st = $('status');
-  st.textContent = self.APP_VERSION;
+  st.textContent = 'Version：' + self.APP_VERSION;
   st.title = data ? 'データの作成日時：' + fmtJst(data.generatedAt) : 'データはまだ読み込んでいません';
 }
 
