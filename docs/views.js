@@ -97,7 +97,7 @@ function renderRewardTab(who, showTotal = true) {
       ['報酬枚数', fmtInt(reward) + '（1日 ' + fmtDec2(w.share * s.rateNow / 365) + '）'],
       ['　旧ランク表', rankText(s.rankOld, s.rateOld) + ' × ' + s.oldDays + ' 日'],
       ['　新ランク表', rankText(s.rankNew, s.rateNew) + ' × ' + s.newDays + ' 日'],
-      ['経過日数', s.days + ' 日（1日目：' + fmtDate(s.firstDay) + '）'],
+      ['経過日数', s.days + ' 日'],
       ['預入日時', fmtDate(split.t)],
     ];
     return el('div', { class: 'card wide' }, el('div', { class: 'sym' }, w.name + ' の枚数（預入＋報酬）'),
@@ -134,43 +134,94 @@ function renderRewardTab(who, showTotal = true) {
 }
 
 //--------------------------------------------------------------
-// 資産タブ：1枚あたりの金額（円。端末ごとに保存）× 総枚数（預入＋報酬）と、報酬の 日・週・月・年
-// 報酬は今の年利（Reward.settled の rateNow）で計算した目安。月＝年÷12
+// 資産タブ
+// ・現在価格（1枚あたりの円）はデータに入っている値（取得エクセルの設定シートで入力。当面は固定）
+// ・購入の記録もデータに入っている（Manager 用は Manager・Agent の両方、Agent 用は Agent の分だけ）
+// ・購入分の平均単価＝購入金額の合計÷購入枚数の合計、総枚数の平均単価＝購入金額の合計÷総枚数（預入＋報酬）
+// ・資産額＝総枚数×価格、含み損益＝資産額−購入金額の合計
+// ・試算価格：価格が変わった場合の資産額・含み損益を見る（端末ごとに保存。空欄なら現在価格）
+// ・［金額を表示］をオフにすると、円の金額を「＊＊＊」で隠す（枚数は表示したまま。端末ごとに保存）
+// ・報酬（日・週・月・年）は今の年利で計算した目安。月＝年÷12
 //--------------------------------------------------------------
-let price = 0;
+let trialPrice = 0;
+let showYen = true;
 let assetPeriod = 'day';
 const PERIODS = { day: { label: '1日', days: 1 }, week: { label: '1週', days: 7 }, month: { label: '1か月', days: 365 / 12 }, year: { label: '1年', days: 365 } };
-const fmtYen = (v) => Math.round(v).toLocaleString('ja-JP') + ' 円';
+const HIDDEN = '＊＊＊';
+const yen = (v) => (showYen ? Math.round(v).toLocaleString('ja-JP') + ' 円' : HIDDEN + ' 円');
+const yenUnit = (v) => (showYen ? Number(v).toLocaleString('ja-JP', { maximumFractionDigits: 2 }) + ' 円' : HIDDEN + ' 円');
+const signedYen = (v) => (showYen ? (v >= 0 ? '+' : '−') + Math.round(Math.abs(v)).toLocaleString('ja-JP') + ' 円' : HIDDEN + ' 円');
+const signedPct = (v) => (v >= 0 ? '+' : '−') + Math.abs(v * 100).toFixed(1) + '%';
+
+// 対象の購入の記録。id が total なら全員分。Agent 用のデータには対象（who）がない（すべて Agent の分）
+function purchasesOf(id) {
+  return (data.purchases || []).filter((p) => id === 'total' || (p.who ? p.who === id : true));
+}
 
 function renderAsset(who, s) {
   const sym = data.token.symbol;
-  if (document.activeElement !== $('priceInput')) $('priceInput').value = price || '';
-  document.querySelectorAll('#periodSeg button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.period === assetPeriod)));
+  const price = Number(data.price) || 0;
   const per = PERIODS[assetPeriod];
   const na = '—';
-  $('assetRate').textContent = '今の年利：' + (s.rankNow ? s.rankNow.name + ' ' + pct(s.rateNow) : 'ランク外 0%') +
-    (price ? '　1枚あたり：' + price.toLocaleString('ja-JP', { maximumFractionDigits: 6 }) + ' 円' : '　1枚あたりの金額を入れると、円でも表示します');
+  $('showYen').checked = showYen;
+  if (document.activeElement !== $('trialInput')) $('trialInput').value = trialPrice || '';
+  $('trialInput').placeholder = price ? String(price) : '例：20';
+  document.querySelectorAll('#periodSeg button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.period === assetPeriod)));
+  $('assetPrice').textContent = '現在価格：' + (price ? yenUnit(price) : '未設定（Manager が設定すると表示されます）') +
+    '　今の年利：' + (s.rankNow ? s.rankNow.name + ' ' + pct(s.rateNow) : 'ランク外 0%');
+
+  const trial = trialPrice > 0 ? trialPrice : 0;
   // スマホ幅でもはみ出さないよう、対象ごとに縦に並べる
   $('assetList').replaceChildren(...who.map((w) => {
     const coins = w.share * (1 + s.factor);
+    const buys = purchasesOf(w.id);
+    const qty = buys.reduce((a, p) => a + Number(p.qty), 0);
+    const cost = buys.reduce((a, p) => a + Number(p.amount), 0);
     const reward = w.share * s.rateNow / 365 * per.days;
-    return el('div', { class: 'asset-item' }, el('div', { class: 'asset-name' }, w.name),
-      el('div', { class: 'kv kv-plain' }, ...kvRows([
-        ['枚数（預入＋報酬）', fmtInt(coins) + ' ' + sym],
-        ['資産額', price ? fmtYen(coins * price) : na],
-        ['報酬（' + per.label + '）', fmtDec2(reward) + ' ' + sym + (price ? '（' + fmtYen(reward * price) + '）' : '')],
-      ])));
+    const gain = (pr) => (cost > 0 ? signedYen(coins * pr - cost) + '（' + signedPct((coins * pr - cost) / cost) + '）' : na);
+    const rows = [
+      ['総枚数（預入＋報酬）', fmtInt(coins) + ' ' + sym],
+      ['購入枚数', buys.length ? fmtInt(qty) + ' ' + sym + '（' + buys.length + ' 件）' : '購入の記録なし'],
+      ['購入金額', buys.length ? yen(cost) : na],
+      ['購入分の平均単価', qty > 0 ? yenUnit(cost / qty) : na],
+      ['総枚数の平均単価', coins > 0 && buys.length ? yenUnit(cost / coins) : na],
+      ['資産額', price ? yen(coins * price) : na],
+      ['含み損益', price ? gain(price) : na],
+    ];
+    if (trial) {
+      rows.push(['試算：資産額（' + yenUnit(trial) + '）', yen(coins * trial)]);
+      rows.push(['試算：含み損益', gain(trial)]);
+    }
+    rows.push(['報酬（' + per.label + '）', fmtDec2(reward) + ' ' + sym + (price ? '（' + yen(reward * price) + '）' : '')]);
+    return el('div', { class: 'asset-item' }, el('div', { class: 'asset-name' }, w.name), el('div', { class: 'kv kv-plain' }, ...kvRows(rows)));
   }));
+
+  // 購入履歴の一覧（Agent アプリだけ。Manager アプリには一覧の欄がない）
+  if ($('buyList')) {
+    const list = [...(data.purchases || [])].sort((x, y) => y.date.localeCompare(x.date));
+    const th = (t, n) => el('th', n ? { class: 'n' } : {}, t);
+    const td = (t, n) => el('td', n ? { class: 'n' } : {}, t);
+    $('buyList').replaceChildren(
+      el('tr', {}, th('購入日'), th('枚数', 1), th('単価', 1), th('購入金額', 1)),
+      ...(list.length ? list.map((p) => el('tr', {}, td(p.date.replace(/-/g, '/')), td(fmtInt(p.qty), 1), td(yenUnit(p.unit), 1), td(yen(p.amount), 1)))
+        : [el('tr', {}, el('td', { colspan: '4' }, '購入の記録はありません'))]));
+  }
 }
 
-$('priceInput').addEventListener('change', async () => {
-  const v = Number($('priceInput').value);
-  price = Number.isFinite(v) && v > 0 ? v : 0;
-  await putSetting('price', price);
+$('showYen').addEventListener('change', async () => { showYen = $('showYen').checked; await putSetting('showYen', showYen); refreshAll(); });
+$('trialInput').addEventListener('change', async () => {
+  const v = Number($('trialInput').value);
+  trialPrice = Number.isFinite(v) && v > 0 ? v : 0;
+  await putSetting('trialPrice', trialPrice);
   refreshAll();
 });
 document.querySelectorAll('#periodSeg button').forEach((b) => b.addEventListener('click', () => { assetPeriod = b.dataset.period; refreshAll(); }));
-ESV.loaders.push(async () => { price = Number(await getSetting('price')) || 0; });
+ESV.loaders.push(async () => {
+  trialPrice = Number(await getSetting('trialPrice')) || 0;
+  const v = await getSetting('showYen');
+  showYen = v !== false;
+  delSetting('price').catch(() => { /* 以前の「1枚あたりの金額」の入力値は使わない（現在価格はデータから） */ });
+});
 
 document.querySelectorAll('#modeSeg button').forEach((b) => b.addEventListener('click', () => { rewardMode = b.dataset.mode; refreshAll(); }));
 $('whoSel').addEventListener('change', () => { rewardWho = $('whoSel').value; refreshAll(); });

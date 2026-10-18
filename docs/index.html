@@ -98,21 +98,22 @@
     <div class="whenData" hidden>
       <div id="assetNote" class="note" hidden></div>
       <div id="assetBody">
-        <h2 class="sec">資産額</h2>
-    <div class="card">
-      <label class="field">1枚あたりの金額（円）<input id="priceInput" type="number" inputmode="decimal" min="0" step="any" placeholder="例：12.5"></label>
-      <p id="assetRate" class="muted"></p>
-      <div class="chart-controls">
-        <div id="periodSeg" class="seg" role="group" aria-label="報酬の期間">
-          <button type="button" data-period="day" aria-pressed="true">日</button>
-          <button type="button" data-period="week" aria-pressed="false">週</button>
-          <button type="button" data-period="month" aria-pressed="false">月</button>
-          <button type="button" data-period="year" aria-pressed="false">年</button>
+        <div class="card">
+          <label class="switch"><input id="showYen" type="checkbox" checked> 金額を表示</label>
+          <p id="assetPrice" class="muted"></p>
+          <label class="field">試算価格（円）：価格が変わった場合の資産額・含み損益を見る<input id="trialInput" type="number" inputmode="decimal" min="0" step="any"></label>
+          <div class="chart-controls">
+            <span class="muted">報酬の期間</span>
+            <div id="periodSeg" class="seg" role="group" aria-label="報酬の期間">
+              <button type="button" data-period="day" aria-pressed="true">日</button>
+              <button type="button" data-period="week" aria-pressed="false">週</button>
+              <button type="button" data-period="month" aria-pressed="false">月</button>
+              <button type="button" data-period="year" aria-pressed="false">年</button>
+            </div>
+          </div>
         </div>
-      </div>
-      <div id="assetList"></div>
-      <p class="muted">資産額＝枚数（預入＋報酬）×1枚あたりの金額。報酬は今の年利で計算した目安です（月＝年÷12）。金額はこの端末だけに保存されます。</p>
-    </div>
+        <div id="assetList" class="card"></div>
+        <p class="muted">購入分の平均単価＝購入金額の合計÷購入枚数。総枚数の平均単価＝購入金額の合計÷総枚数（預入＋報酬）。資産額＝総枚数×現在価格。含み損益＝資産額−購入金額の合計。報酬は今の年利で計算した目安です（月＝年÷12）。試算価格と［金額を表示］はこの端末だけの設定です。</p>
       </div>
     </div>
   </section>
