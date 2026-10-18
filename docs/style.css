@@ -240,8 +240,19 @@ table.grid tr.total td, table.grid.sim tr.sim-ctl td { background: rgba(255, 255
 .asset-hero .hero-val { text-shadow: 0 0 18px rgba(90, 150, 255, .35); }
 dialog::backdrop { background: rgba(0, 0, 0, .6); }
 /* 内訳の見出しは折り返さない（旧ランク（〜日付）などを1行に） */
-.hero-folds .kv .k, .hero-folds .kv .v { white-space: nowrap; }
-.hero-folds .kv > div { font-size: 13px; padding: 5px 0; }
+/* 内訳：見出しは折り返さない。値は通常1行（画面の幅に合わせて文字を小さく）だが、収まらない端末では見切れずに折り返す */
+.hero-folds .kv .k { white-space: nowrap; }
+.hero-folds .kv .v { white-space: normal; overflow-wrap: anywhere; }
+.hero-folds .kv > div { font-size: clamp(11px, 3.2vw, 13px); padding: 5px 0; }
+.hero-folds .kv { column-gap: 8px; }
+.hero-folds .fold-body { padding: 4px 8px 6px; }
 /* 運用シミュレーション：年間取り崩しの入力欄（6桁分）と％ */
 #withdrawInput { width: calc(6ch + 10px); }
 #withdrawPct { font-size: 12px; }
+/* 狭いスマホ：上部の見出しと「作成：…」を1行に収める。選択欄ははみ出さない */
+.bar { gap: 8px; }
+.bar h1 { font-size: clamp(13px, 4.2vw, 17px); white-space: nowrap; }
+.bar .title { min-width: 0; flex-wrap: nowrap; }
+.role { white-space: nowrap; }
+.status { white-space: nowrap; font-size: clamp(10px, 3vw, 12px); }
+.chart-controls select { max-width: 100%; min-width: 0; }

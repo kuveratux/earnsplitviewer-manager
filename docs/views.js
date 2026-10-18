@@ -92,12 +92,14 @@ function renderRewardTab(who, showTotal = true) {
   // 保有枚数（預入＋報酬）のカード。数字は資産タブの資産額と同じ大きさ。内訳は折りたたみ（最初は閉じる）
   const multi = who.length > 1;
   const newStart = Date.parse(ranks.new.startDate + 'T00:00:00+09:00') / 1000;
-  const oldLast = fmtDay(newStart - Reward.DAY);       // 旧ランク表の最終日
-  const newFirst = ranks.new.startDate.replace(/-/g, '/'); // 新ランク表の開始日
+  // 旧ランク表の最終日・新ランク表の開始日（内訳の見出しを短くするため、月/日だけ。年は預入日時でわかる）
+  const md = (unix) => { const d = new Date((unix + 9 * 3600) * 1000); return (d.getUTCMonth() + 1) + '/' + d.getUTCDate(); };
+  const oldLast = md(newStart - Reward.DAY);
+  const newFirst = md(newStart);
   $('rewardCards').replaceChildren(...who.map((w) => {
     const reward = w.share * s.factor;
     const rows = [
-      ['預入枚数', fmtInt(w.share) + ' ' + sym + (showTotal && w.share !== s.total ? '（合計 ' + fmtInt(s.total) + ' の ' + pct(w.share / s.total) + '）' : '')],
+      ['預入枚数', fmtInt(w.share) + ' ' + sym + (showTotal && w.share !== s.total ? '（' + pct(w.share / s.total) + '）' : '')],
       ['報酬枚数', fmtInt(reward) + ' ' + sym + '（' + fmtDec2(w.share * s.rateNow / 365) + ' ' + sym + '/日）'],
       ['預入日時', fmtDate(split.t)],
       ['経過日数', s.days + ' 日'],
