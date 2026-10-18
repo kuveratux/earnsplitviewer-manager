@@ -100,11 +100,12 @@ function renderRewardTab(who, showTotal = true) {
     const reward = w.share * s.factor;
     const rows = [
       ['預入枚数', fmtInt(w.share) + ' ' + sym + (showTotal && w.share !== s.total ? '（' + pct(w.share / s.total) + '）' : '')],
-      ['報酬枚数', fmtInt(reward) + ' ' + sym + '（' + fmtDec2(w.share * s.rateNow / 365) + ' ' + sym + '/日）'],
+      // 報酬枚数：1行目に枚数、2行目に1日あたり
+      ['報酬枚数', el('span', {}, fmtInt(reward) + ' ' + sym, el('br'), el('span', { class: 'per-day' }, fmtDec2(w.share * s.rateNow / 365) + ' ' + sym + '/日'))],
       ['預入日時', fmtDate(split.t)],
       ['経過日数', s.days + ' 日'],
-      ['　旧ランク（〜' + oldLast + '）', s.oldDays + ' 日（' + rankText(s.rankOld, s.rateOld) + '）'],
-      ['　新ランク（' + newFirst + '〜）', s.newDays + ' 日（' + rankText(s.rankNew, s.rateNew) + '）'],
+      ['　旧ランク（〜' + oldLast + '）', rankText(s.rankOld, s.rateOld) + '（' + s.oldDays + ' 日）'],
+      ['　新ランク（' + newFirst + '〜）', rankText(s.rankNew, s.rateNew) + '（' + s.newDays + ' 日）'],
     ];
     const key = 'reward-' + w.id;
     const d = el('details', { class: 'fold' },
