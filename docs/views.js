@@ -221,7 +221,7 @@ function renderAsset(who, s, all = who) {
   if (!who.length) {
     $('heroLabel').textContent = '資産額';
     $('heroValue').textContent = '—';
-    $('heroSub').textContent = '表示する対象がありません。「設定」の「資産タブの表示」で選んでください。';
+    $('heroSub').textContent = '表示する対象がありません。「設定」の「ホームの表示」で選んでください。';
   } else {
     const c = calc(who[0]);
     $('heroLabel').textContent = APP.id === 'manager' ? '資産額（' + labelOf_(who[0]) + '）' : '資産額';

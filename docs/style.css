@@ -277,3 +277,19 @@ html { background: var(--bg); }
 .asset-hero .coin-icon { height: 34px; width: auto; max-width: 68px; object-fit: contain; flex: none; }
 .slotlist .coin-prev { width: 44px; height: 44px; flex: none; display: flex; align-items: center; justify-content: center; border: 1px dashed var(--line); border-radius: 8px; font-size: 11px; }
 .slotlist .coin-prev img { max-width: 40px; max-height: 40px; object-fit: contain; }
+/* 1.2：タブを画面の一番下に固定（アイコンの下にタブ名）。ヘッダは約1.2倍の高さ・文字 */
+.tabs { position: fixed; left: 0; right: 0; top: auto; bottom: 0; z-index: 6; border-bottom: 0; border-top: 1px solid var(--line);
+  padding-bottom: env(safe-area-inset-bottom); background: rgba(6, 10, 20, .94); }
+.tabs button { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 9px 0 8px; font-size: 12px;
+  border-bottom: 0; border-top: 3px solid transparent; margin-top: -1px; }
+.tabs button[aria-selected="true"] { border-top-color: var(--accent); }
+.tab-ic { width: 25px; height: 25px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.tabs button[aria-selected="true"] .tab-ic { filter: drop-shadow(0 0 6px var(--glow)); }
+main { padding-bottom: calc(88px + env(safe-area-inset-bottom)); }
+body { padding-bottom: 0; }
+.bar { padding: calc(13px + env(safe-area-inset-top)) 16px 13px; }
+/* タイトルは画面の幅に合わせる（狭いスマホでも Manager／Agent の印と Version を並べて1行に収める） */
+.bar h1 { font-size: clamp(12px, 3.55vw, 20px); letter-spacing: .03em; }
+.bar-icon { width: 32px; height: 32px; border-radius: 8px; margin-right: 10px; }
+.role { font-size: 12px; padding: 1px 8px; }
+.status { font-size: clamp(11px, 3.4vw, 14px); }

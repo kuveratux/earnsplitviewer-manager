@@ -384,6 +384,29 @@ document.querySelectorAll('.tabs button').forEach((btn) => btn.addEventListener(
   document.querySelectorAll('.tab').forEach((s) => { s.hidden = s.id !== 'tab-' + btn.dataset.tab; });
 }));
 
+// 横にスワイプすると隣のタブへ（左へスワイプで右隣、右へで左隣）
+// 横の動きがはっきり大きいときだけ。入力欄・グラフ・横にスクロールできる表の上、アドレス一覧を開いているときは動かさない
+(() => {
+  let sx = 0, sy = 0, st = 0, armed = false;
+  const scrollsX = (e) => { for (let n = e; n && n !== document.body; n = n.parentElement) { if (n.scrollWidth > n.clientWidth + 1 && /(auto|scroll)/.test(getComputedStyle(n).overflowX)) return true; } return false; };
+  document.addEventListener('touchstart', (ev) => {
+    armed = false;
+    if (ev.touches.length !== 1 || !$('tab-book').hidden) return;
+    const t = ev.target;
+    if (t.closest('input, select, textarea, dialog, .ch-wrap, .tabs') || scrollsX(t)) return;
+    sx = ev.touches[0].clientX; sy = ev.touches[0].clientY; st = Date.now(); armed = true;
+  }, { passive: true });
+  document.addEventListener('touchend', (ev) => {
+    if (!armed) return;
+    armed = false;
+    const dx = ev.changedTouches[0].clientX - sx, dy = ev.changedTouches[0].clientY - sy;
+    if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 2 || Date.now() - st > 800) return;
+    const btns = [...document.querySelectorAll('.tabs button')];
+    const j = btns.findIndex((b) => b.getAttribute('aria-selected') === 'true') + (dx < 0 ? 1 : -1);
+    if (j >= 0 && j < btns.length) { btns[j].click(); window.scrollTo(0, 0); }
+  }, { passive: true });
+})();
+
 function refreshAll() {
   document.querySelectorAll('.whenEmpty').forEach((e) => { e.hidden = !!data; });
   document.querySelectorAll('.whenData').forEach((e) => { e.hidden = !data; });
