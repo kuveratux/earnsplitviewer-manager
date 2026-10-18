@@ -141,6 +141,7 @@ async function loadSavedData() {
 }
 
 const RANK_LABEL = { old: '旧ランク表', new: '新ランク表' };
+let lastImportKind = null; // 直前に読み込んだファイルの種類（'data' | 'rankOld' | 'rankNew'）。ドライブのファイルを枠に振り分けるのに使う
 
 // 読み込んだ文字列（暗号化されていれば復号）を、データかランク表かを見分けて保存する
 // 戻り値：表示するメッセージ。キャンセル時は null。失敗時は例外
@@ -152,6 +153,7 @@ async function importText(text, fileName, source) {
 
   if (json.format === 'esv-rank') {
     validateRank(json);
+    lastImportKind = json.kind === 'old' ? 'rankOld' : 'rankNew';
     const cur = ranks[json.kind];
     if (cur && source === 'drive' && cur.generatedAt === json.generatedAt) return RANK_LABEL[json.kind] + 'は最新です';
     ranks[json.kind] = { ranks: json.ranks, startDate: json.startDate || '', generatedAt: json.generatedAt, fileName };
@@ -161,6 +163,7 @@ async function importText(text, fileName, source) {
   }
 
   validateData(json);
+  lastImportKind = 'data';
   if (data && source === 'drive' && json.generatedAt === data.generatedAt) {
     return 'データは最新です（作成：' + fmtJst(json.generatedAt) + '）';
   }
@@ -194,8 +197,47 @@ document.querySelectorAll('.dataFile').forEach((input) => input.addEventListener
 //--------------------------------------------------------------
 let driveBusy = false;
 
-// 選んだファイル（データ・旧ランク表・新ランク表）をまとめて取得する。初回・選び直しはファイルを選ばせる
-async function fetchFromDrive(forcePick) {
+// ドライブのファイルは、データ・旧ランク表・新ランク表の3つの枠に1つずつ覚える（'driveSlots'）
+// 足りない枠があれば、取得のときに1つずつ選んでもらう。選び直しは枠ごと
+const SLOTS = [
+  { key: 'data', label: () => SCOPE_LABEL[APP.dataScope] + ' 用のデータ', hint: () => 'esv_' + APP.dataScope + '_latest.json' },
+  { key: 'rankOld', label: () => '旧ランク表', hint: () => 'esv_rank_old.json' },
+  { key: 'rankNew', label: () => '新ランク表', hint: () => 'esv_rank_new.json' },
+];
+const slotOf = (key) => SLOTS.find((x) => x.key === key);
+
+async function getSlots() {
+  return (await getSetting('driveSlots')) || {};
+}
+
+// ファイルを1つ取得して読み込む。戻り値：{ msg, kind }。失敗時は例外
+async function driveImportOne(file) {
+  const { meta, text } = await Drive.download(file.id);
+  lastImportKind = null;
+  const msg = await importText(text, meta.name, 'drive');
+  return { msg, kind: lastImportKind, name: meta.name };
+}
+
+// 1つの枠のファイルを選んで読み込む。キャンセル時は null
+async function pickSlot(key, msgs) {
+  const slot = slotOf(key);
+  $('status').textContent = slot.label() + 'を選択中…';
+  const picked = await Drive.pick(slot.label() + 'のファイル（' + slot.hint() + '）を選んでください');
+  if (!picked || !picked.length) return null;
+  const file = picked[0];
+  $('status').textContent = slot.label() + 'を取得中…';
+  const r = await driveImportOne(file);
+  if (!r.kind) return 'cancel'; // 合言葉の入力をやめた
+  const slots = await getSlots();
+  slots[r.kind] = { id: file.id, name: r.name };
+  await putSetting('driveSlots', slots);
+  if (r.msg) msgs.push(r.msg);
+  if (r.kind !== key) msgs.push('※ 選んだファイルは「' + slotOf(r.kind).label() + '」でした。そちらとして覚えました。「' + slot.label() + '」は、もう一度選んでください。');
+  return r.kind;
+}
+
+// pickKey：選び直す枠（省略時は、覚えている枠を取得し、足りない枠を1つずつ選ばせる）
+async function fetchFromDrive(pickKey) {
   if (driveBusy) return;
   if (!Drive.configured()) { alert('Google ドライブの連携が設定されていません。'); return; }
   driveBusy = true;
@@ -203,52 +245,62 @@ async function fetchFromDrive(forcePick) {
   try {
     $('status').textContent = '準備中…';
     await Drive.ensureLoaded();
-    let files = forcePick ? null : await getSetting('driveFiles');
-    if (!files || !files.length) {
-      $('status').textContent = 'ファイルを選択中…';
-      files = await Drive.pick(SCOPE_LABEL[APP.dataScope] + ' 用のデータファイルと、ランク表（旧・新）の3つを選んでください', true);
-      if (!files) return;
-      await putSetting('driveFiles', files);
-      renderDriveInfo();
-    }
-    for (const [i, file] of files.entries()) {
-      $('status').textContent = '取得中…（' + (i + 1) + '/' + files.length + '）';
-      try {
-        const { meta, text } = await Drive.download(file.id);
-        if (meta.name !== file.name) { file.name = meta.name; await putSetting('driveFiles', files); }
-        const m = await importText(text, meta.name, 'drive');
-        if (m) msgs.push(m);
-      } catch (err) {
-        if (err.repick) await delSetting('driveFiles');
-        msgs.push(file.name + '：' + err.message);
-        if (err.retry || err.repick) break;
+    await delSetting('driveFiles'); // 以前の「まとめて選ぶ」形の記録は使わない
+    if (pickKey) {
+      await pickSlot(pickKey, msgs);
+    } else {
+      // 覚えている枠を取得
+      const slots = await getSlots();
+      for (const slot of SLOTS) {
+        const file = slots[slot.key];
+        if (!file) continue;
+        $('status').textContent = slot.label() + 'を取得中…';
+        try {
+          const r = await driveImportOne(file);
+          if (r.msg) msgs.push(r.msg);
+          if (r.name !== file.name) { slots[slot.key] = { id: file.id, name: r.name }; await putSetting('driveSlots', slots); }
+        } catch (err) {
+          if (err.repick) { delete slots[slot.key]; await putSetting('driveSlots', slots); }
+          msgs.push(file.name + '：' + err.message);
+          if (err.retry) return; // ログインからやり直し（finally でメッセージを出す）
+        }
+      }
+      // 足りない枠を1つずつ選ぶ（キャンセルしたらそこでやめる）
+      for (let guard = 0; guard < 6; guard++) {
+        const cur = await getSlots();
+        const missing = SLOTS.find((x) => !cur[x.key]);
+        if (!missing) break;
+        if (!confirm(missing.label() + 'のファイルがまだ選ばれていません。今選びますか？')) break;
+        const r = await pickSlot(missing.key, msgs);
+        if (!r || r === 'cancel') break;
       }
     }
-    if (data && (!ranks.old || !ranks.new)) msgs.push('※ 報酬を計算するには、ランク表（旧・新）も必要です。「ファイルを選び直す」で3つを選んでください。');
   } catch (err) {
     msgs.push(err.message);
   } finally {
     driveBusy = false;
     renderDriveInfo();
     showStatus();
+    if (msgs.length) alert(msgs.join('\n'));
   }
-  if (msgs.length) alert(msgs.join('\n'));
 }
 
 async function renderDriveInfo() {
   const ok = Drive.configured();
   document.querySelectorAll('.driveOnly').forEach((e) => { e.hidden = !ok; });
   if (!ok) return;
-  const files = await getSetting('driveFiles');
+  const slots = await getSlots();
   const pass = await getSetting('passphrase');
-  $('driveInfo').textContent = '選んだファイル：' + (files && files.length ? files.map((f) => f.name).join('、') : '未選択（初回に、データとランク表（旧・新）の3つを選びます）');
+  $('driveSlots').replaceChildren(...SLOTS.map((slot) => el('li', {},
+    el('div', { class: 'slot-text' }, el('span', { class: 'muted' }, slot.label()), el('b', {}, slots[slot.key] ? slots[slot.key].name : '未選択')),
+    el('button', { type: 'button', onclick: () => fetchFromDrive(slot.key) }, slots[slot.key] ? '選び直す' : '選ぶ'))));
   $('forgetPassBtn').hidden = !pass;
 }
 
-document.querySelectorAll('.driveFetch').forEach((b) => b.addEventListener('click', () => fetchFromDrive(false)));
-$('drivePickBtn').addEventListener('click', () => fetchFromDrive(true));
+document.querySelectorAll('.driveFetch').forEach((b) => b.addEventListener('click', () => fetchFromDrive()));
 $('driveSignOutBtn').addEventListener('click', async () => {
   Drive.signOut();
+  await delSetting('driveSlots');
   await delSetting('driveFiles');
   renderDriveInfo();
   alert('Google との連携を解除しました（次回はログインとファイルの選択からやり直します）');
