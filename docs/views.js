@@ -85,7 +85,7 @@ function renderRewardTab(who, showTotal = true) {
     const reward = w.share * s.factor;
     const rows = [
       ['預入枚数', fmtAmount(w.share) + (showTotal && w.share !== s.total ? '（合計 ' + fmtAmount(s.total) + ' の ' + pct(w.share / s.total) + '）' : '')],
-      ['報酬枚数', fmtAmount(reward)],
+      ['報酬枚数', fmtAmount(reward) + '（1日 ' + fmtAmount(w.share * s.rateNow / 365) + '）'],
       ['　旧ランク表', rankText(s.rankOld, s.rateOld) + ' × ' + s.oldDays + ' 日'],
       ['　新ランク表', rankText(s.rankNew, s.rateNew) + ' × ' + s.newDays + ' 日'],
       ['経過日数', s.days + ' 日（1日目：' + fmtDate(s.firstDay) + '）'],
@@ -95,6 +95,8 @@ function renderRewardTab(who, showTotal = true) {
       el('div', { class: 'val' }, fmtAmount(w.share + reward), el('small', {}, sym)),
       el('div', { class: 'bal-extra' }, ...rows.flatMap(([k, v]) => [el('span', {}, k), el('b', {}, v)])));
   }));
+
+  renderAsset(who, s);
 
   // 見込み：対象（Manager は Manager 分・Agent 分・合算を切り替え）
   const targets = who;
@@ -121,6 +123,45 @@ function renderRewardTab(who, showTotal = true) {
     el('tr', {}, th('時点'), th('単利（' + sym + '）', 1), th('複利（' + sym + '）', 1)),
     ...[0, 12, 24, 36].map((m) => el('tr', {}, td(label(proj.simple[m])), td(fmtAmount(target.share * proj.simple[m].g), 1), td(fmtAmount(target.share * proj.compound[m].g), 1))));
 }
+
+//--------------------------------------------------------------
+// 資産額：1枚あたりの金額（円。端末ごとに保存）× 総枚数（預入＋報酬）と、報酬の 日・週・月・年
+// 報酬は今の年利（Reward.settled の rateNow）で計算した目安。月＝年÷12
+//--------------------------------------------------------------
+let price = 0;
+let assetPeriod = 'day';
+const PERIODS = { day: { label: '1日', days: 1 }, week: { label: '1週', days: 7 }, month: { label: '1か月', days: 365 / 12 }, year: { label: '1年', days: 365 } };
+const fmtYen = (v) => Math.round(v).toLocaleString('ja-JP') + ' 円';
+
+function renderAsset(who, s) {
+  const sym = data.token.symbol;
+  if (document.activeElement !== $('priceInput')) $('priceInput').value = price || '';
+  document.querySelectorAll('#periodSeg button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.period === assetPeriod)));
+  const per = PERIODS[assetPeriod];
+  const na = '—';
+  $('assetRate').textContent = '今の年利：' + (s.rankNow ? s.rankNow.name + ' ' + pct(s.rateNow) : 'ランク外 0%') +
+    (price ? '　1枚あたり：' + price.toLocaleString('ja-JP', { maximumFractionDigits: 6 }) + ' 円' : '　1枚あたりの金額を入れると、円でも表示します');
+  // スマホ幅でもはみ出さないよう、対象ごとに縦に並べる
+  $('assetList').replaceChildren(...who.map((w) => {
+    const coins = w.share * (1 + s.factor);
+    const reward = w.share * s.rateNow / 365 * per.days;
+    return el('div', { class: 'asset-item' }, el('div', { class: 'asset-name' }, w.name),
+      el('div', { class: 'kv kv-plain' }, ...kvRows([
+        ['枚数（預入＋報酬）', fmtAmount(coins) + ' ' + sym],
+        ['資産額', price ? fmtYen(coins * price) : na],
+        ['報酬（' + per.label + '）', fmtAmount(reward) + ' ' + sym + (price ? '（' + fmtYen(reward * price) + '）' : '')],
+      ])));
+  }));
+}
+
+$('priceInput').addEventListener('change', async () => {
+  const v = Number($('priceInput').value);
+  price = Number.isFinite(v) && v > 0 ? v : 0;
+  await putSetting('price', price);
+  refreshAll();
+});
+document.querySelectorAll('#periodSeg button').forEach((b) => b.addEventListener('click', () => { assetPeriod = b.dataset.period; refreshAll(); }));
+ESV.loaders.push(async () => { price = Number(await getSetting('price')) || 0; });
 
 document.querySelectorAll('#modeSeg button').forEach((b) => b.addEventListener('click', () => { rewardMode = b.dataset.mode; refreshAll(); }));
 $('whoSel').addEventListener('change', () => { rewardWho = $('whoSel').value; refreshAll(); });

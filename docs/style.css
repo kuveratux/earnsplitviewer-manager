@@ -183,3 +183,7 @@ table.grid tr.total td { font-weight: 700; background: var(--bg); }
 .ch-tip { position: absolute; top: 6px; width: 140px; background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 4px 8px; font-size: 12px; box-shadow: 0 2px 8px rgba(0,0,0,.15); pointer-events: none; }
 .ch-tip b { display: block; font-size: 14px; font-variant-numeric: tabular-nums; }
 .ch-tip span { color: var(--muted); }
+/* 資産額 */
+.asset-item { border-top: 1px solid var(--line); padding: 8px 0 2px; }
+.asset-item:first-child { border-top: 0; }
+.asset-name { font-weight: 600; font-size: 14px; }

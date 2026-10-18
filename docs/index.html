@@ -72,6 +72,21 @@
       <div id="rewardBody">
         <p id="rewardAsOf" class="muted"></p>
         <div id="rewardCards" class="cards"></div>
+        <h2 class="sec">資産額</h2>
+        <div class="card">
+          <label class="field">1枚あたりの金額（円）<input id="priceInput" type="number" inputmode="decimal" min="0" step="any" placeholder="例：12.5"></label>
+          <p id="assetRate" class="muted"></p>
+          <div class="chart-controls">
+            <div id="periodSeg" class="seg" role="group" aria-label="報酬の期間">
+              <button type="button" data-period="day" aria-pressed="true">日</button>
+              <button type="button" data-period="week" aria-pressed="false">週</button>
+              <button type="button" data-period="month" aria-pressed="false">月</button>
+              <button type="button" data-period="year" aria-pressed="false">年</button>
+            </div>
+          </div>
+          <div id="assetList"></div>
+          <p class="muted">資産額＝枚数（預入＋報酬）×1枚あたりの金額。報酬は今の年利で計算した目安です（月＝年÷12）。金額はこの端末だけに保存されます。</p>
+        </div>
         <h2 class="sec">3年後までの見込み</h2>
         <div class="chart-controls">
           <div id="modeSeg" class="seg" role="group" aria-label="計算方法">

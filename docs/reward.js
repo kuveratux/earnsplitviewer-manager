@@ -38,7 +38,10 @@ const Reward = (() => {
     const rateOld = rankOld ? rankOld.rate : 0;
     const rateNew = rankNew ? rankNew.rate : 0;
     const factor = (rateOld * oldDays + rateNew * newDays) / 365; // 元の1枚あたりの報酬
-    return { total, days, oldDays, newDays, rankOld, rankNew, rateOld, rateNew, factor, firstDay: split.t + DAY };
+    // 今の年利：次の1日（days＋1 日目）に使うランク表で、合計枚数から決めたランクの年利（1日・週・月・年の報酬の目安に使う）
+    const rankNow = rankFor(tableOn(split, rk, days + 1), total);
+    const rateNow = rankNow ? rankNow.rate : 0;
+    return { total, days, oldDays, newDays, rankOld, rankNew, rateOld, rateNew, rankNow, rateNow, factor, firstDay: split.t + DAY };
   }
 
   // 日本時間の年月日を n か月ずらした日の 0:00（月末は丸める）
