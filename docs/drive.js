@@ -39,7 +39,7 @@ const Drive = (() => {
         await Promise.all([loadScript('https://accounts.google.com/gsi/client'), loadScript('https://apis.google.com/js/api.js')]);
         await new Promise((resolve) => gapi.load('picker', resolve));
         tokenClient = google.accounts.oauth2.initTokenClient({ client_id: GOOGLE.clientId, scope: SCOPE, callback: () => {} });
-      })();
+      })().catch((e) => { loading = null; throw e; }); // 失敗したら、次に押したときに読み込み直す
     }
     await loading;
     return true;
@@ -53,9 +53,9 @@ const Drive = (() => {
         resolve(token.value);
       };
       tokenClient.error_callback = (e) => {
-        const err = new Error(e.type === 'popup_failed_to_open'
+        const err = new Error((e.type === 'popup_failed_to_open'
           ? 'ログイン画面を開けませんでした。もう一度ボタンを押してください。'
-          : e.type === 'popup_closed' ? 'ログインが中断されました。' : 'Google ログインに失敗しました：' + e.type);
+          : e.type === 'popup_closed' ? 'ログインが中断されました。' : 'Google ログインに失敗しました。') + '（' + e.type + '）');
         err.retry = e.type === 'popup_failed_to_open';
         reject(err);
       };
@@ -66,6 +66,19 @@ const Drive = (() => {
   async function getToken() {
     if (token && Date.now() < token.expiresAt) return token.value;
     return requestToken('');
+  }
+
+  // ボタンの処理の最初（await より前）に呼ぶ。ログインが必要なら、その場でログイン画面を開く
+  // iPhone の Safari は、ボタンを押した直後に開いたウィンドウしか許さない（間に待ち時間のある処理を挟むとブロックされる）
+  // Google の部品をまだ読み込んでいないときは何もしない（null）
+  function authorizeNow() {
+    if (!tokenClient || (token && Date.now() < token.expiresAt)) return null;
+    return requestToken('');
+  }
+
+  // Google の部品を前もって読み込む（設定タブを開いたときに呼ぶ。ボタンを押したときに間に合うように）
+  function preload() {
+    if (configured()) ensureLoaded().catch(() => { /* 読み込めなくても、ボタンを押したときにもう一度試す */ });
   }
 
   // ファイルを選ぶ（初回・ファイルを変えるとき）。[{ id, name }] を返す（multi なら複数選べる）。キャンセル時は null
@@ -115,5 +128,5 @@ const Drive = (() => {
     token = null;
   }
 
-  return { configured, ensureLoaded, pick, download, signOut };
+  return { configured, ensureLoaded, authorizeNow, preload, pick, download, signOut };
 })();

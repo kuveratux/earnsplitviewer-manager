@@ -247,11 +247,16 @@ async function pickSlot(key, msgs) {
 async function fetchFromDrive(pickKey) {
   if (driveBusy) return;
   if (!Drive.configured()) { alert('Google ドライブの連携が設定されていません。'); return; }
+  // ログイン画面は、ほかの処理より先に開く（iPhone の Safari で開けなくならないように）
+  let auth = null;
+  try { auth = Drive.authorizeNow(); } catch { auth = null; }
   driveBusy = true;
   const msgs = [];
   try {
     $('status').textContent = '準備中…';
-    await Drive.ensureLoaded();
+    const loadedNow = await Drive.ensureLoaded();
+    if (auth) { $('status').textContent = 'ログイン中…'; await auth; }
+    else if (loadedNow) $('status').textContent = '準備ができました…';
     await delSetting('driveFiles'); // 以前の「まとめて選ぶ」形の記録は使わない
     if (pickKey) {
       await pickSlot(pickKey, msgs);
@@ -406,6 +411,8 @@ $('installBtn').addEventListener('click', async () => {
 //--------------------------------------------------------------
 // タブ切り替え・全体
 //--------------------------------------------------------------
+// 設定タブを開いたら、Google の部品を前もって読み込む（「最新データを取得」を押したときに、すぐログイン画面を開けるように）
+document.querySelector('[data-tab=settings]').addEventListener('click', () => Drive.preload());
 document.querySelectorAll('.tabs button').forEach((btn) => btn.addEventListener('click', () => {
   document.querySelectorAll('.tabs button').forEach((b) => b.setAttribute('aria-selected', String(b === btn)));
   document.querySelectorAll('.tab').forEach((s) => { s.hidden = s.id !== 'tab-' + btn.dataset.tab; });
