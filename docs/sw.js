@@ -30,9 +30,15 @@ const SHELL_FILES = [
   'icons/icon-512-maskable.png',
 ];
 
+// 新しい版のファイルは、公開サイトの一時保管（最大 10 分）を通さずに取る（URL に版の印を付ける。保管庫からは印を無視して探す）
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(SHELL).then((c) => c.addAll(SHELL_FILES.map((u) => new Request(u, { cache: 'reload' })))).then(() => self.skipWaiting()));
+  e.waitUntil(caches.open(SHELL)
+    .then((c) => Promise.all(SHELL_FILES.map((u) => fetch(new Request(u + (u.includes('?') ? '&' : '?') + 'v=' + self.APP_VERSION, { cache: 'reload' }))
+      .then((res) => { if (!res.ok) throw new Error(u + ': ' + res.status); return c.put(new Request(u), res); }))))
+    .then(() => self.skipWaiting()));
 });
+
+self.addEventListener('message', (e) => { if (e.data === 'skipWaiting') self.skipWaiting(); });
 
 self.addEventListener('activate', (e) => {
   e.waitUntil(
@@ -51,7 +57,7 @@ self.addEventListener('fetch', (e) => {
   e.respondWith(
     caches.open(SHELL).then((c) =>
       c.match(e.request, { ignoreSearch: true }).then((hit) => {
-        const update = fetch(e.request)
+        const update = fetch(e.request, { cache: 'no-cache' }) // 裏での取り直しは、一時保管を確かめ直してから
           .then((res) => { if (res.ok) c.put(e.request, res.clone()); return res; })
           .catch(() => hit);
         return hit || update;
