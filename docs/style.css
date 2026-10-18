@@ -223,3 +223,6 @@ table.grid.sim tr > th:first-child { width: 28%; }
 .hero-folds .fold > summary { font-size: 14px; padding: 8px 10px; background: var(--bg); }
 .hero-folds .fold-body { background: var(--bg); }
 .rate-now { font-size: 13px; font-weight: 600; color: var(--muted); }
+/* 試算価格：入力欄（6桁分）の後ろに「円」 */
+.trial-row { display: flex; align-items: center; gap: 6px; margin: 8px 0; font-size: 14px; }
+.trial-row input { width: calc(6ch + 22px); padding: 6px 8px; font: inherit; font-variant-numeric: tabular-nums; text-align: right; color: var(--text); background: var(--card); border: 1px solid var(--line); border-radius: 8px; }
