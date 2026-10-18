@@ -195,6 +195,13 @@ table.grid tr.total td { font-weight: 700; background: var(--bg); }
 .slotlist .slot-text b { font-size: 13px; word-break: break-all; }
 .slotlist button { padding: 4px 12px; white-space: nowrap; }
 /* 資産タブ */
-.switch { display: flex; align-items: center; gap: 8px; font-weight: 600; }
-.switch input { width: 20px; height: 20px; accent-color: var(--accent); }
+.asset-hero .hero-row { display: flex; align-items: center; gap: 10px; margin-top: 2px; }
+.asset-hero .hero-val { font-size: 26px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: .01em; }
+.asset-hero #heroSub { margin: 4px 0 0; font-size: 13px; }
+.eye { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; padding: 0; border-radius: 50%; color: var(--muted); }
+.eye[aria-pressed="false"] { color: var(--accent); }
+.fold { margin: 10px 0; }
+.fold > summary { cursor: pointer; font-weight: 600; font-size: 15px; padding: 10px 12px; background: var(--card); border: 1px solid var(--line); border-radius: 10px; list-style-position: inside; }
+.fold[open] > summary { border-radius: 10px 10px 0 0; border-bottom: 0; }
+.fold[open] > .scroll { border-radius: 0 0 10px 10px; }
 #assetList .asset-item:first-child { padding-top: 0; }

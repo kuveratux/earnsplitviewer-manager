@@ -98,8 +98,15 @@
     <div class="whenData" hidden>
       <div id="assetNote" class="note" hidden></div>
       <div id="assetBody">
+        <div class="card asset-hero">
+          <div id="heroLabel" class="sym"></div>
+          <div class="hero-row">
+            <span id="heroValue" class="hero-val"></span>
+            <button id="eyeBtn" type="button" class="eye" aria-pressed="true" aria-label="金額を隠す"></button>
+          </div>
+          <div id="heroSub" class="muted"></div>
+        </div>
         <div class="card">
-          <label class="switch"><input id="showYen" type="checkbox" checked> 金額を表示</label>
           <p id="assetPrice" class="muted"></p>
           <label class="field">試算価格（円）：価格が変わった場合の資産額・含み損益を見る<input id="trialInput" type="number" inputmode="decimal" min="0" step="any"></label>
           <div class="chart-controls">
@@ -113,7 +120,7 @@
           </div>
         </div>
         <div id="assetList" class="card"></div>
-        <p class="muted">購入分の平均単価＝購入金額の合計÷購入枚数。総枚数の平均単価＝購入金額の合計÷総枚数（預入＋報酬）。資産額＝総枚数×現在価格。含み損益＝資産額−購入金額の合計。報酬は今の年利で計算した目安です（月＝年÷12）。試算価格と［金額を表示］はこの端末だけの設定です。</p>
+        <p class="muted">購入分の平均単価＝購入金額の合計÷購入枚数。総枚数の平均単価＝購入金額の合計÷総枚数（預入＋報酬）。資産額＝総枚数×現在価格。含み損益＝資産額−購入金額の合計。報酬は今の年利で計算した目安です（月＝年÷12）。試算価格と、目のマークでの金額の表示・非表示は、この端末だけの設定です。</p>
       </div>
     </div>
   </section>

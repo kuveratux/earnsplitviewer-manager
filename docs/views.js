@@ -163,7 +163,20 @@ function renderAsset(who, s) {
   const price = Number(data.price) || 0;
   const per = PERIODS[assetPeriod];
   const na = '—';
-  $('showYen').checked = showYen;
+  // 一番上：資産額（Manager は合算、Agent は自分）と目のマーク
+  const eye = $('eyeBtn');
+  eye.innerHTML = showYen ? EYE_ON : EYE_OFF; // 固定の図形だけ（データは入れない）
+  eye.setAttribute('aria-pressed', String(showYen));
+  eye.setAttribute('aria-label', showYen ? '金額を隠す' : '金額を表示する');
+  {
+    const w = who[0];
+    const coins = w.share * (1 + s.factor);
+    const cost = purchasesOf(w.id).reduce((a, p) => a + Number(p.amount), 0);
+    $('heroLabel').textContent = who.length > 1 ? '資産額（合算）' : '資産額';
+    $('heroValue').textContent = price ? yen(coins * price) : '—';
+    $('heroSub').textContent = !price ? '現在価格が未設定のため、資産額は表示できません'
+      : cost > 0 ? '含み損益 ' + signedYen(coins * price - cost) + '（' + signedPct((coins * price - cost) / cost) + '）' : '購入の記録はありません';
+  }
   if (document.activeElement !== $('trialInput')) $('trialInput').value = trialPrice || '';
   $('trialInput').placeholder = price ? String(price) : '例：20';
   document.querySelectorAll('#periodSeg button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.period === assetPeriod)));
@@ -199,6 +212,7 @@ function renderAsset(who, s) {
   // 購入履歴の一覧（Agent アプリだけ。Manager アプリには一覧の欄がない）
   if ($('buyList')) {
     const list = [...(data.purchases || [])].sort((x, y) => y.date.localeCompare(x.date));
+    $('buySummary').textContent = '購入履歴（' + list.length + ' 件）';
     const th = (t, n) => el('th', n ? { class: 'n' } : {}, t);
     const td = (t, n) => el('td', n ? { class: 'n' } : {}, t);
     $('buyList').replaceChildren(
@@ -208,7 +222,10 @@ function renderAsset(who, s) {
   }
 }
 
-$('showYen').addEventListener('change', async () => { showYen = $('showYen').checked; await putSetting('showYen', showYen); refreshAll(); });
+// 目のマーク：押すたびに、タブ内の円の金額の表示・非表示を切り替える
+const EYE_ON = '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="2"/></svg>';
+const EYE_OFF = '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M2 12s3.6-7 10-7c2 0 3.8.7 5.3 1.7M22 12s-3.6 7-10 7c-2 0-3.8-.7-5.3-1.7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M3 3l18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
+$('eyeBtn').addEventListener('click', async () => { showYen = !showYen; await putSetting('showYen', showYen); refreshAll(); });
 $('trialInput').addEventListener('change', async () => {
   const v = Number($('trialInput').value);
   trialPrice = Number.isFinite(v) && v > 0 ? v : 0;
