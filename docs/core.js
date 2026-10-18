@@ -341,11 +341,28 @@ $('forgetPassBtn').addEventListener('click', async () => {
   alert('保存していた合言葉を削除しました');
 });
 
+// ヘッダのタイトルを、アイコン・Manager／Agent の印・Version を除いた残りの幅いっぱいの大きさに（12〜26px）
+function fitTitle() {
+  const h = document.querySelector('.bar h1'), box = document.querySelector('.bar .title'), bar = document.querySelector('.bar'), st = $('status');
+  if (!h || !box || !bar) return;
+  const outer = (e) => e.getBoundingClientRect().width + (parseFloat(getComputedStyle(e).marginLeft) || 0) + (parseFloat(getComputedStyle(e).marginRight) || 0);
+  const others = [...box.children].filter((e) => e !== h).reduce((w, e) => w + outer(e), 0);
+  const cs = getComputedStyle(bar);
+  // ヘッダの幅から、左右の余白・Version・間隔・アイコン・印を引いた残り
+  const avail = bar.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) - (st ? outer(st) : 0) - (parseFloat(cs.columnGap) || 0) - others - 2;
+  h.style.fontSize = '20px';
+  const natural = h.scrollWidth;
+  h.style.fontSize = Math.max(12, Math.min(26, Math.floor(20 * avail / natural * 10) / 10)) + 'px';
+}
+window.addEventListener('resize', fitTitle);
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitTitle);
+
 function showStatus() {
   // ヘッダの右側はアプリのバージョン（取得中などは、そのときだけ「取得中…」などを出す）
   const st = $('status');
   st.textContent = 'Version：' + self.APP_VERSION;
   st.title = data ? 'データの作成日時：' + fmtJst(data.generatedAt) : 'データはまだ読み込んでいません';
+  fitTitle();
 }
 
 //--------------------------------------------------------------
@@ -384,11 +401,25 @@ document.querySelectorAll('.tabs button').forEach((btn) => btn.addEventListener(
   document.querySelectorAll('.tab').forEach((s) => { s.hidden = s.id !== 'tab-' + btn.dataset.tab; });
 }));
 
-// 横にスワイプすると隣のタブへ（左へスワイプで右隣、右へで左隣）。ページは指についてきて、離すと次のページが横から滑り込む
-// 少しだけ動かしたときは元に戻る。両端のタブでは重く動いて戻る
+// 横にスワイプすると隣のタブへ（左へスワイプで右隣、右へで左隣）。ページは指についてきて、離すと次のページが横から滑り込む（0.15 秒）
+// 動かしている間は、移る先の側に矢印と行き先のタブ名を出す。画面幅の 20% 未満でゆっくり離したときは元に戻る。両端のタブでは重く動いて戻る
 // 入力欄・グラフ・横にスクロールできる表の上、アドレス一覧を開いているときは動かさない
 (() => {
-  const SLIDE_MS = 220;
+  const SLIDE_MS = 150;
+  // 移る先を示す矢印（左へ払うと右端に「›」と次のタブ名、右へ払うと左端に「‹」と前のタブ名）
+  const hint = document.createElement('div');
+  hint.className = 'swipe-hint';
+  hint.innerHTML = '<span class="sh-arrow"></span><span class="sh-name"></span>';
+  document.body.appendChild(hint);
+  const showHint = (dir, name, p) => { // dir：-1＝次（右端）、1＝前（左端）、p：0〜1
+    hint.classList.toggle('left', dir > 0); hint.classList.toggle('right', dir < 0);
+    hint.querySelector('.sh-arrow').textContent = dir < 0 ? '›' : '‹';
+    hint.querySelector('.sh-name').textContent = name;
+    hint.style.opacity = String(Math.min(1, p * 1.6));
+    hint.style.setProperty('--p', String(Math.min(1, p)));
+    hint.classList.toggle('ready', p >= 1);
+  };
+  const hideHint = (go) => { hint.classList.remove('ready'); if (go) { hint.classList.add('go'); setTimeout(() => { hint.classList.remove('go'); hint.style.opacity = '0'; }, 260); } else hint.style.opacity = '0'; };
   let sx = 0, sy = 0, st = 0, armed = false, mode = '', dx = 0, page = null, busy = false;
   const scrollsX = (e) => { for (let n = e; n && n !== document.body; n = n.parentElement) { if (n.scrollWidth > n.clientWidth + 1 && /(auto|scroll)/.test(getComputedStyle(n).overflowX)) return true; } return false; };
   const btns = () => [...document.querySelectorAll('.tabs button')];
@@ -413,16 +444,19 @@ document.querySelectorAll('.tabs button').forEach((btn) => btn.addEventListener(
     if (mode !== 'x') return;
     ev.preventDefault(); // 横に動かしている間は、縦にスクロールさせない
     const j = curIndex() + (mx < 0 ? 1 : -1);
-    dx = j >= 0 && j < btns().length ? mx : mx / 4; // 端のタブでは重く
+    const has = j >= 0 && j < btns().length;
+    dx = has ? mx : mx / 4; // 端のタブでは重く
     move(page, dx, 0);
+    if (has) showHint(mx < 0 ? -1 : 1, btns()[j].textContent.trim(), Math.abs(dx) / (window.innerWidth * 0.2)); else hideHint(false);
   }, { passive: false });
   document.addEventListener('touchend', async () => {
     if (!armed || mode !== 'x' || !page) { armed = false; return; }
     armed = false;
     const cur = page, w = window.innerWidth;
     const j = curIndex() + (dx < 0 ? 1 : -1);
-    const fast = Math.abs(dx) > 30 && Date.now() - st < 250; // すばやく払ったときは短くても移る
-    if (j < 0 || j >= btns().length || (Math.abs(dx) < w * 0.25 && !fast)) { move(cur, 0, SLIDE_MS); await after(SLIDE_MS); move(cur, 0, 0); return; }
+    const fast = Math.abs(dx) > 25 && Date.now() - st < 300; // すばやく払ったときは短くても移る
+    if (j < 0 || j >= btns().length || (Math.abs(dx) < w * 0.2 && !fast)) { hideHint(false); move(cur, 0, SLIDE_MS); await after(SLIDE_MS); move(cur, 0, 0); return; }
+    hideHint(true);
     busy = true;
     const dir = dx < 0 ? -1 : 1;
     move(cur, dir * w, SLIDE_MS); // 今のページを外へ
@@ -434,7 +468,7 @@ document.querySelectorAll('.tabs button').forEach((btn) => btn.addEventListener(
     if (next) { move(next, -dir * w, 0); next.getBoundingClientRect(); move(next, 0, SLIDE_MS); await after(SLIDE_MS); move(next, 0, 0); } // 次のページを反対側から
     busy = false;
   });
-  document.addEventListener('touchcancel', () => { if (armed && page) move(page, 0, SLIDE_MS); armed = false; });
+  document.addEventListener('touchcancel', () => { if (armed && page) move(page, 0, SLIDE_MS); hideHint(false); armed = false; });
 })();
 
 function refreshAll() {

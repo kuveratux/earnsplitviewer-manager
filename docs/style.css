@@ -298,3 +298,24 @@ body { padding-bottom: 0; }
 /* スワイプでページを横に動かす間、横のスクロールバーを出さない */
 main { overflow-x: clip; }
 .tab { will-change: transform; }
+/* 1.2.2：ヘッダはアイコンと文字を枠いっぱいに（アイコンはヘッダの高さいっぱい、タイトルは残りの幅いっぱい〔core.js の fitTitle〕） */
+.bar { padding: calc(7px + env(safe-area-inset-top)) 12px 7px 10px; }
+.bar-icon { width: 44px; height: 44px; margin-right: 8px; }
+.bar h1 { letter-spacing: .03em; line-height: 1.2; text-overflow: clip; }
+/* スワイプで移る先を示す矢印（画面の端の中ほど。指の動きに合わせて現れ、移ると決まったら進む向きへ流れる） */
+.swipe-hint { position: fixed; top: 50%; z-index: 7; display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 10px 8px; border-radius: 14px; background: rgba(20, 40, 90, .85); border: 1px solid rgba(160, 195, 255, .6);
+  box-shadow: 0 0 18px rgba(70, 130, 255, .45); color: #fff; opacity: 0; pointer-events: none; --p: 0;
+  transform: translateY(-50%) translateX(calc((1 - var(--p)) * var(--from))); transition: opacity .1s; }
+.swipe-hint.right { right: 8px; --from: 16px; }
+.swipe-hint.left { left: 8px; --from: -16px; }
+.swipe-hint .sh-arrow { font-size: 34px; line-height: 1; font-weight: 700; }
+.swipe-hint .sh-name { font-size: 11px; white-space: nowrap; }
+.swipe-hint.ready { background: linear-gradient(180deg, #3f78f0, var(--accent-2)); }
+.swipe-hint.ready .sh-arrow { animation: sh-pulse .5s ease-in-out infinite alternate; }
+.swipe-hint.right.ready .sh-arrow { --dx: -4px; }
+.swipe-hint.left.ready .sh-arrow { --dx: 4px; }
+@keyframes sh-pulse { from { transform: translateX(0); } to { transform: translateX(var(--dx)); } }
+.swipe-hint.go { transition: transform .25s ease-in, opacity .25s ease-in; opacity: 0 !important; }
+.swipe-hint.right.go { transform: translateY(-50%) translateX(-60vw); }
+.swipe-hint.left.go { transform: translateY(-50%) translateX(60vw); }
