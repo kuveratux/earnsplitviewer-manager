@@ -271,3 +271,5 @@ html { background: var(--bg); }
 .bar h1 { font-size: clamp(12px, 3.9vw, 17px); overflow: hidden; text-overflow: ellipsis; }
 .role { margin-left: 6px; flex: none; }
 .status { flex: none; }
+/* ドライブの欄：ファイル名の下の作成・読み込み日時 */
+.slotlist .slot-meta { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }

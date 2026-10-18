@@ -156,7 +156,7 @@ async function importText(text, fileName, source) {
     lastImportKind = json.kind === 'old' ? 'rankOld' : 'rankNew';
     const cur = ranks[json.kind];
     if (cur && source === 'drive' && cur.generatedAt === json.generatedAt) return RANK_LABEL[json.kind] + 'は最新です';
-    ranks[json.kind] = { ranks: json.ranks, startDate: json.startDate || '', generatedAt: json.generatedAt, fileName };
+    ranks[json.kind] = { ranks: json.ranks, startDate: json.startDate || '', generatedAt: json.generatedAt, fileName, importedAt: new Date().toISOString() };
     await putSetting(json.kind === 'old' ? 'rankOld' : 'rankNew', ranks[json.kind]);
     refreshAll();
     return RANK_LABEL[json.kind] + 'を読み込みました（' + json.ranks.length + ' ランク' + (json.startDate ? '、開始日 ' + json.startDate : '') + '）';
@@ -304,6 +304,16 @@ async function fetchFromDrive(pickKey) {
   }
 }
 
+// 読み込んであるデータ・ランク表の作成日時と読み込み日時（ドライブの欄のファイル名の下に出す）
+const fmtShortJst = (iso) => new Date(iso).toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+function slotTimes(key) {
+  const x = key === 'data' ? (data && dataMeta ? { g: data.generatedAt, i: dataMeta.importedAt } : null)
+    : key === 'rankOld' ? (ranks.old ? { g: ranks.old.generatedAt, i: ranks.old.importedAt } : null)
+    : (ranks.new ? { g: ranks.new.generatedAt, i: ranks.new.importedAt } : null);
+  if (!x) return '';
+  return '作成 ' + fmtShortJst(x.g) + (x.i ? '　読込 ' + fmtShortJst(x.i) : '');
+}
+
 async function renderDriveInfo() {
   const ok = Drive.configured();
   document.querySelectorAll('.driveOnly').forEach((e) => { e.hidden = !ok; });
@@ -311,7 +321,8 @@ async function renderDriveInfo() {
   const slots = await getSlots();
   const pass = await getSetting('passphrase');
   $('driveSlots').replaceChildren(...SLOTS.map((slot) => el('li', {},
-    el('div', { class: 'slot-text' }, el('span', { class: 'muted' }, slot.label()), el('b', {}, slots[slot.key] ? slots[slot.key].name : '未選択')),
+    el('div', { class: 'slot-text' }, el('span', { class: 'muted' }, slot.label()), el('b', {}, slots[slot.key] ? slots[slot.key].name : '未選択'),
+      slotTimes(slot.key) ? el('span', { class: 'slot-meta' }, slotTimes(slot.key)) : null),
     el('button', { type: 'button', onclick: () => fetchFromDrive(slot.key) }, slots[slot.key] ? '選び直す' : '選ぶ'))));
   $('forgetPassBtn').hidden = !pass;
 }
@@ -331,15 +342,10 @@ $('forgetPassBtn').addEventListener('click', async () => {
 });
 
 function showStatus() {
-  // ヘッダの右側は日時だけ（狭い画面でタイトルと重ならないように）。「作成：」は補足（title）に出す
+  // ヘッダの右側はアプリのバージョン（取得中などは、そのときだけ「取得中…」などを出す）
   const st = $('status');
-  if (data) {
-    st.textContent = new Date(data.generatedAt).toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-    st.title = 'データの作成日時：' + fmtJst(data.generatedAt);
-  } else {
-    st.textContent = '未読み込み';
-    st.title = 'データはまだ読み込んでいません';
-  }
+  st.textContent = self.APP_VERSION;
+  st.title = data ? 'データの作成日時：' + fmtJst(data.generatedAt) : 'データはまだ読み込んでいません';
 }
 
 //--------------------------------------------------------------
@@ -347,6 +353,7 @@ function showStatus() {
 //--------------------------------------------------------------
 async function showStorageInfo() {
   if (!navigator.storage || !navigator.storage.persist) return;
+  if (!$('storageInfo')) { navigator.storage.persist().catch(() => {}); return; } // 表示の欄はなくした（持続化の依頼だけする）
   const persisted = await navigator.storage.persisted() || await navigator.storage.persist();
   $('storageInfo').textContent = persisted
     ? '保存の持続化：有効（容量不足でも自動で消されにくくなっています）'
@@ -383,7 +390,7 @@ function refreshAll() {
   $('dummyNote').hidden = !(data && data.dummy);
   hooks.render();
   for (const f of ESV.renderers) f();
-  $('dataInfo').textContent = (data
+  if ($('dataInfo')) $('dataInfo').textContent = (data
     ? 'データ：' + dataMeta.fileName + '（作成 ' + fmtJst(data.generatedAt) + '、読み込み ' + fmtJst(dataMeta.importedAt) + '）' + hooks.describe()
     : 'データ：まだ読み込んでいません。') +
     '　旧ランク表：' + (ranks.old ? ranks.old.fileName : '未読み込み') +

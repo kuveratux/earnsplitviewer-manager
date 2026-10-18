@@ -139,23 +139,14 @@
   <!-- 設定 -->
   <section id="tab-settings" class="tab" hidden>
     <div class="card">
-      <h2>アドレス一覧</h2>
-      <p class="muted">取引に出てきたアドレスの一覧です。名前を付けると、取引一覧の相手先にも表示されます（この端末だけに保存）。</p>
-      <div class="row"><button id="openBookBtn" class="primary">アドレス一覧を開く</button></div>
-    </div>
-    <div class="card">
       <h2>データ</h2>
-      <p id="dataInfo" class="muted">まだ読み込んでいません。</p>
-      <p class="muted">データは自動では更新されません。「最新データを取得」を押すか、ファイルから読み込んでください（暗号化されたファイルは合言葉を入力します）。Manager 用のデータファイル（全取引）と、ランク表（旧・新）を読み込みます。</p>
       <div class="row">
         <button class="primary driveFetch driveOnly" hidden>最新データを取得</button>
         <label class="button">ファイルから読み込む<input class="dataFile" type="file" accept="application/json,.json" multiple hidden></label>
       </div>
-      <p id="storageInfo" class="muted"></p>
     </div>
     <div class="card driveOnly" hidden>
       <h2>Google ドライブ</h2>
-      <p class="muted">データ・旧ランク表・新ランク表のファイルを、1つずつ選びます。「最新データを取得」で、選んだ3つをまとめて取り直します（まだ選んでいないものは、そのとき選びます）。このアプリが読めるのは、ここで選んだファイルだけです。</p>
       <ul id="driveSlots" class="slotlist"></ul>
       <div class="row">
         <button id="driveSignOutBtn">連携を解除</button>
@@ -188,6 +179,11 @@
       <button id="installBtn" class="primary" hidden>アプリとしてインストール</button>
       <p class="muted"><b>Android（Chrome）</b>：メニュー（︙）→「ホーム画面に追加」または「アプリをインストール」</p>
       <p class="muted"><b>iPhone（Safari）</b>：共有ボタン →「ホーム画面に追加」</p>
+    </div>
+    <div class="card">
+      <h2>アドレス一覧</h2>
+      <p class="muted">取引に出てきたアドレスの一覧です。名前を付けると、取引一覧の相手先にも表示されます（この端末だけに保存）。</p>
+      <div class="row"><button id="openBookBtn" class="primary">アドレス一覧を開く</button></div>
     </div>
   </section>
   <!-- アドレス一覧（設定タブから開く） -->

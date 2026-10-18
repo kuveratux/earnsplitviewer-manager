@@ -123,10 +123,12 @@ function renderRewardTab(who, showTotal = true, opts = {}) {
       el('div', { class: 'hero-folds' }, d));
   }));
 
-  renderAsset(opts.assetWho || who, s, who);
+  // 資産タブのシミュレーションの対象も「資産タブの表示」に合わせる（何も選んでいなければ全員）
+  renderAsset(opts.assetWho || who, s, opts.assetWho && opts.assetWho.length ? opts.assetWho : who);
 
   // 見込み：対象（Manager は Manager 分・Agent 分・合算を切り替え）
-  const targets = who;
+  // 運用シミュレーションの対象は「保有枚数の表示」に合わせる（何も選んでいなければ全員）
+  const targets = rewardList.length ? rewardList : who;
   const sel = $('whoSel');
   sel.hidden = targets.length < 2;
   const tnames = targets.map((t) => t.name).join('|');
