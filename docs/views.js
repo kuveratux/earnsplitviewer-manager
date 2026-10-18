@@ -243,11 +243,16 @@ function renderAsset(who, s) {
     : [cell(na), cell(na), cell(na, fmtDec2(c.reward) + ' ' + sym)];
   const now = col(price);
   const tri = trial ? col(trial) : [cell('価格を入力'), cell(na), cell(na)];
+  // 期間のボタンとランクは、含み損益と報酬の行の間に置く（ボタンは左、ランクは表の右端）。画面に1つずつある部品を、行に移して使う
+  const ctl = el('tr', { class: 'sim-ctl' }, el('td', { colspan: '3' }, el('div', { class: 'sim-ctl-in' }, $('periodSeg'), $('rateNow'))));
   $('simTable').replaceChildren(
-    el('tr', {}, th(''), th('現在価格' + (price ? '（' + yenUnit(price) + '）' : ''), 1), th('試算価格' + (trial ? '（' + yenUnit(trial) + '）' : ''), 1)),
+    el('tr', {}, th(''), th('現在価格', 1), th('試算価格', 1)),
     el('tr', {}, el('th', {}, '資産額'), now[0], tri[0]),
     el('tr', {}, el('th', {}, '含み損益'), now[1], tri[1]),
+    ctl,
     el('tr', {}, el('th', {}, '報酬（' + per.label + '）'), now[2], tri[2]));
+  // ボタンを移したあと、空になった元の置き場は隠す（Manager は対象の選択が残る）
+  document.querySelectorAll('#tab-asset .chart-controls').forEach((d) => { d.hidden = !d.querySelector('select'); });
 }
 
 // 目のマーク：押すたびに、タブ内の円の金額の表示・非表示を切り替える

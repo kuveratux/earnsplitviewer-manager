@@ -225,4 +225,11 @@ table.grid.sim tr > th:first-child { width: 28%; }
 .rate-now { font-size: 13px; font-weight: 600; color: var(--muted); }
 /* 試算価格：入力欄（6桁分）の後ろに「円」 */
 .trial-row { display: flex; align-items: center; gap: 6px; margin: 8px 0; font-size: 14px; }
-.trial-row input { width: calc(6ch + 22px); padding: 6px 8px; font: inherit; font-variant-numeric: tabular-nums; text-align: right; color: var(--text); background: var(--card); border: 1px solid var(--line); border-radius: 8px; }
+.trial-row input { width: calc(6ch + 10px); padding: 5px 4px; -moz-appearance: textfield; appearance: textfield; font: inherit; font-variant-numeric: tabular-nums; text-align: right; color: var(--text); background: var(--card); border: 1px solid var(--line); border-radius: 8px; }
+/* 増減ボタン（▲▼）を出さない（入力欄を短く見せる） */
+.trial-row input::-webkit-outer-spin-button, .trial-row input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+/* シミュレーションの表：見出しは1行。期間のボタンの行 */
+table.grid.sim tr:first-child th { white-space: nowrap; }
+table.grid.sim tr.sim-ctl td { padding: 6px 8px; background: var(--bg); }
+.sim-ctl-in { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.sim-ctl-in .seg button { padding: 4px 12px; }
