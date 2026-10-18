@@ -201,7 +201,19 @@ table.grid tr.total td { font-weight: 700; background: var(--bg); }
 .eye { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; padding: 0; border-radius: 50%; color: var(--muted); }
 .eye[aria-pressed="false"] { color: var(--accent); }
 .fold { margin: 10px 0; }
-.fold > summary { cursor: pointer; font-weight: 600; font-size: 15px; padding: 10px 12px; background: var(--card); border: 1px solid var(--line); border-radius: 10px; list-style-position: inside; }
+.fold > summary { cursor: pointer; font-weight: 600; font-size: 15px; padding: 10px 12px; background: var(--card); border: 1px solid var(--line); border-radius: 10px; list-style: none; }
 .fold[open] > summary { border-radius: 10px 10px 0 0; border-bottom: 0; }
 .fold[open] > .scroll { border-radius: 0 0 10px 10px; }
 #assetList .asset-item:first-child { padding-top: 0; }
+/* 資産額の内訳（折りたたみ）とシミュレーション */
+.fold > summary { display: flex; align-items: center; gap: 8px; }
+.fold > summary > span:first-child { flex: 1; }
+.fold > summary .fold-val { font-variant-numeric: tabular-nums; }
+.fold > summary::-webkit-details-marker { display: none; }
+.fold > summary::before { content: '▸'; color: var(--muted); }
+.fold[open] > summary::before { content: '▾'; }
+.fold-body { background: var(--card); border: 1px solid var(--line); border-top: 0; border-radius: 0 0 10px 10px; padding: 4px 12px 8px; }
+#assetList .fold { margin: 6px 0; }
+table.grid.sim th, table.grid.sim td { white-space: normal; }
+table.grid.sim tr > th:first-child { width: 28%; }
+.sim-sub { font-size: 11px; color: var(--muted); font-weight: 400; }

@@ -151,62 +151,63 @@ const HIDDEN = '＊＊＊';
 const yen = (v) => (showYen ? Math.round(v).toLocaleString('ja-JP') + ' 円' : HIDDEN + ' 円');
 const yenUnit = (v) => (showYen ? Number(v).toLocaleString('ja-JP', { maximumFractionDigits: 2 }) + ' 円' : HIDDEN + ' 円');
 const signedYen = (v) => (showYen ? (v >= 0 ? '+' : '−') + Math.round(Math.abs(v)).toLocaleString('ja-JP') + ' 円' : HIDDEN + ' 円');
-const signedPct = (v) => (v >= 0 ? '+' : '−') + Math.abs(v * 100).toFixed(1) + '%';
+const signedPct = (v) => (showYen ? (v >= 0 ? '+' : '−') + Math.abs(v * 100).toFixed(1) + '%' : HIDDEN + '%'); // 金額を隠すときは％も隠す
 
 // 対象の購入の記録。id が total なら全員分。Agent 用のデータには対象（who）がない（すべて Agent の分）
 function purchasesOf(id) {
   return (data.purchases || []).filter((p) => id === 'total' || (p.who ? p.who === id : true));
 }
 
+let simWho = '';
+const openFolds = new Set(); // 開いている内訳（描き直しても開いたままにする）
+
 function renderAsset(who, s) {
   const sym = data.token.symbol;
   const price = Number(data.price) || 0;
   const per = PERIODS[assetPeriod];
+  const trial = trialPrice > 0 ? trialPrice : 0;
   const na = '—';
+  // 対象ごとの数字
+  const calc = (w) => {
+    const coins = w.share * (1 + s.factor);
+    const buys = purchasesOf(w.id);
+    const qty = buys.reduce((a, p) => a + Number(p.qty), 0);
+    const cost = buys.reduce((a, p) => a + Number(p.amount), 0);
+    return { w, coins, buys, qty, cost, reward: w.share * s.rateNow / 365 * per.days };
+  };
+  const gain = (c, pr) => (c.cost > 0 ? signedYen(c.coins * pr - c.cost) + '（' + signedPct((c.coins * pr - c.cost) / c.cost) + '）' : na);
+
   // 一番上：資産額（Manager は合算、Agent は自分）と目のマーク
   const eye = $('eyeBtn');
   eye.innerHTML = showYen ? EYE_ON : EYE_OFF; // 固定の図形だけ（データは入れない）
   eye.setAttribute('aria-pressed', String(showYen));
   eye.setAttribute('aria-label', showYen ? '金額を隠す' : '金額を表示する');
   {
-    const w = who[0];
-    const coins = w.share * (1 + s.factor);
-    const cost = purchasesOf(w.id).reduce((a, p) => a + Number(p.amount), 0);
+    const c = calc(who[0]);
     $('heroLabel').textContent = who.length > 1 ? '資産額（合算）' : '資産額';
-    $('heroValue').textContent = price ? yen(coins * price) : '—';
+    $('heroValue').textContent = price ? yen(c.coins * price) : '—';
     $('heroSub').textContent = !price ? '現在価格が未設定のため、資産額は表示できません'
-      : cost > 0 ? '含み損益 ' + signedYen(coins * price - cost) + '（' + signedPct((coins * price - cost) / cost) + '）' : '購入の記録はありません';
+      : c.cost > 0 ? '含み損益 ' + gain(c, price) : '購入の記録はありません';
   }
-  if (document.activeElement !== $('trialInput')) $('trialInput').value = trialPrice || '';
-  $('trialInput').placeholder = price ? String(price) : '例：20';
-  document.querySelectorAll('#periodSeg button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.period === assetPeriod)));
-  $('assetPrice').textContent = '現在価格：' + (price ? yenUnit(price) : '未設定（Manager が設定すると表示されます）') +
-    '　今の年利：' + (s.rankNow ? s.rankNow.name + ' ' + pct(s.rateNow) : 'ランク外 0%');
 
-  const trial = trialPrice > 0 ? trialPrice : 0;
-  // スマホ幅でもはみ出さないよう、対象ごとに縦に並べる
+  // 資産額の内訳（対象ごとに折りたたみ。最初は閉じる）
   $('assetList').replaceChildren(...who.map((w) => {
-    const coins = w.share * (1 + s.factor);
-    const buys = purchasesOf(w.id);
-    const qty = buys.reduce((a, p) => a + Number(p.qty), 0);
-    const cost = buys.reduce((a, p) => a + Number(p.amount), 0);
-    const reward = w.share * s.rateNow / 365 * per.days;
-    const gain = (pr) => (cost > 0 ? signedYen(coins * pr - cost) + '（' + signedPct((coins * pr - cost) / cost) + '）' : na);
+    const c = calc(w);
     const rows = [
-      ['総枚数（預入＋報酬）', fmtInt(coins) + ' ' + sym],
-      ['購入枚数', buys.length ? fmtInt(qty) + ' ' + sym + '（' + buys.length + ' 件）' : '購入の記録なし'],
-      ['購入金額', buys.length ? yen(cost) : na],
-      ['購入分の平均単価', qty > 0 ? yenUnit(cost / qty) : na],
-      ['総枚数の平均単価', coins > 0 && buys.length ? yenUnit(cost / coins) : na],
-      ['資産額', price ? yen(coins * price) : na],
-      ['含み損益', price ? gain(price) : na],
+      ['総枚数（預入＋報酬）', fmtInt(c.coins) + ' ' + sym],
+      ['購入枚数', c.buys.length ? fmtInt(c.qty) + ' ' + sym + '（' + c.buys.length + ' 件）' : '購入の記録なし'],
+      ['購入金額', c.buys.length ? yen(c.cost) : na],
+      ['購入分の平均単価', c.qty > 0 ? yenUnit(c.cost / c.qty) : na],
+      ['総枚数の平均単価', c.coins > 0 && c.buys.length ? yenUnit(c.cost / c.coins) : na],
+      ['資産額', price ? yen(c.coins * price) : na],
+      ['含み損益', price ? gain(c, price) : na],
     ];
-    if (trial) {
-      rows.push(['試算：資産額（' + yenUnit(trial) + '）', yen(coins * trial)]);
-      rows.push(['試算：含み損益', gain(trial)]);
-    }
-    rows.push(['報酬（' + per.label + '）', fmtDec2(reward) + ' ' + sym + (price ? '（' + yen(reward * price) + '）' : '')]);
-    return el('div', { class: 'asset-item' }, el('div', { class: 'asset-name' }, w.name), el('div', { class: 'kv kv-plain' }, ...kvRows(rows)));
+    const d = el('details', { class: 'fold' },
+      el('summary', {}, el('span', {}, w.name), el('span', { class: 'fold-val' }, price ? yen(c.coins * price) : fmtInt(c.coins) + ' ' + sym)),
+      el('div', { class: 'fold-body' }, el('div', { class: 'kv kv-plain' }, ...kvRows(rows))));
+    d.open = openFolds.has(w.id);
+    d.addEventListener('toggle', () => { if (d.open) openFolds.add(w.id); else openFolds.delete(w.id); });
+    return d;
   }));
 
   // 購入履歴の一覧（Agent アプリだけ。Manager アプリには一覧の欄がない）
@@ -220,6 +221,31 @@ function renderAsset(who, s) {
       ...(list.length ? list.map((p) => el('tr', {}, td(p.date.replace(/-/g, '/')), td(fmtInt(p.qty), 1), td(yenUnit(p.unit), 1), td(yen(p.amount), 1)))
         : [el('tr', {}, el('td', { colspan: '4' }, '購入の記録はありません'))]));
   }
+
+  // シミュレーション：縦に 資産額・含み損益・報酬、横に 現在価格・試算価格
+  if (document.activeElement !== $('trialInput')) $('trialInput').value = trialPrice || '';
+  $('trialInput').placeholder = '例：' + (price ? String(Math.round(price * 2 * 100) / 100) : '20');
+  document.querySelectorAll('#periodSeg button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.period === assetPeriod)));
+  $('assetPrice').textContent = '現在価格：' + (price ? yenUnit(price) : '未設定') + '　今の年利：' + (s.rankNow ? s.rankNow.name + ' ' + pct(s.rateNow) : 'ランク外 0%');
+  if ($('simSel')) {
+    if ($('simSel').options.length !== who.length) $('simSel').replaceChildren(...who.map((w) => el('option', { value: w.id }, w.name)));
+    if (!who.some((w) => w.id === simWho)) simWho = who[0].id;
+    $('simSel').value = simWho;
+  }
+  const target = who.find((w) => w.id === simWho) || who[0];
+  const c = calc(target);
+  const th = (t, n) => el('th', n ? { class: 'n' } : {}, t);
+  const cell = (main, sub) => el('td', { class: 'n' }, main, sub ? el('div', { class: 'sim-sub' }, sub) : null);
+  const col = (pr) => pr
+    ? [cell(yen(c.coins * pr)), cell(c.cost > 0 ? signedYen(c.coins * pr - c.cost) : na, c.cost > 0 ? signedPct((c.coins * pr - c.cost) / c.cost) : null), cell(yen(c.reward * pr), fmtDec2(c.reward) + ' ' + sym)]
+    : [cell(na), cell(na), cell(na, fmtDec2(c.reward) + ' ' + sym)];
+  const now = col(price);
+  const tri = trial ? col(trial) : [cell('価格を入力'), cell(na), cell(na)];
+  $('simTable').replaceChildren(
+    el('tr', {}, th(''), th('現在価格' + (price ? '（' + yenUnit(price) + '）' : ''), 1), th('試算価格' + (trial ? '（' + yenUnit(trial) + '）' : ''), 1)),
+    el('tr', {}, el('th', {}, '資産額'), now[0], tri[0]),
+    el('tr', {}, el('th', {}, '含み損益'), now[1], tri[1]),
+    el('tr', {}, el('th', {}, '報酬（' + per.label + '）'), now[2], tri[2]));
 }
 
 // 目のマーク：押すたびに、タブ内の円の金額の表示・非表示を切り替える
@@ -233,6 +259,7 @@ $('trialInput').addEventListener('change', async () => {
   refreshAll();
 });
 document.querySelectorAll('#periodSeg button').forEach((b) => b.addEventListener('click', () => { assetPeriod = b.dataset.period; refreshAll(); }));
+if ($('simSel')) $('simSel').addEventListener('change', () => { simWho = $('simSel').value; refreshAll(); });
 ESV.loaders.push(async () => {
   trialPrice = Number(await getSetting('trialPrice')) || 0;
   const v = await getSetting('showYen');
