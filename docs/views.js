@@ -88,21 +88,32 @@ function renderRewardTab(who, showTotal = true) {
   const rk = { old: ranks.old, new: ranks.new };
   const s = Reward.settled(split, rk, now);
   const rankText = (r, rate) => (r ? r.name + ' ' + pct(rate) : 'ランク外 0%');
-  $('rewardAsOf').textContent = '今日（' + fmtDay(now) + '）までの確定分です。預入の日時から24時間ごとに1日と数えます。新ランク表の開始日：' + ranks.new.startDate;
 
+  // 保有枚数（預入＋報酬）のカード。数字は資産タブの資産額と同じ大きさ。内訳は折りたたみ（最初は閉じる）
+  const multi = who.length > 1;
+  const newStart = Date.parse(ranks.new.startDate + 'T00:00:00+09:00') / 1000;
+  const oldLast = fmtDay(newStart - Reward.DAY);       // 旧ランク表の最終日
+  const newFirst = ranks.new.startDate.replace(/-/g, '/'); // 新ランク表の開始日
   $('rewardCards').replaceChildren(...who.map((w) => {
     const reward = w.share * s.factor;
     const rows = [
-      ['預入枚数', fmtInt(w.share) + (showTotal && w.share !== s.total ? '（合計 ' + fmtInt(s.total) + ' の ' + pct(w.share / s.total) + '）' : '')],
-      ['報酬枚数', fmtInt(reward) + '（1日 ' + fmtDec2(w.share * s.rateNow / 365) + '）'],
-      ['　旧ランク表', rankText(s.rankOld, s.rateOld) + ' × ' + s.oldDays + ' 日'],
-      ['　新ランク表', rankText(s.rankNew, s.rateNew) + ' × ' + s.newDays + ' 日'],
-      ['経過日数', s.days + ' 日'],
+      ['預入枚数', fmtInt(w.share) + ' ' + sym + (showTotal && w.share !== s.total ? '（合計 ' + fmtInt(s.total) + ' の ' + pct(w.share / s.total) + '）' : '')],
+      ['報酬枚数', fmtInt(reward) + ' ' + sym + '（' + fmtDec2(w.share * s.rateNow / 365) + ' ' + sym + '/日）'],
       ['預入日時', fmtDate(split.t)],
+      ['経過日数', s.days + ' 日'],
+      ['　旧ランク（〜' + oldLast + '）', s.oldDays + ' 日（' + rankText(s.rankOld, s.rateOld) + '）'],
+      ['　新ランク（' + newFirst + '〜）', s.newDays + ' 日（' + rankText(s.rankNew, s.rateNew) + '）'],
     ];
-    return el('div', { class: 'card wide' }, el('div', { class: 'sym' }, w.name + ' の枚数（預入＋報酬）'),
-      el('div', { class: 'val' }, fmtInt(w.share + reward), el('small', {}, sym)),
-      el('div', { class: 'bal-extra' }, ...rows.flatMap(([k, v]) => [el('span', {}, k), el('b', {}, v)])));
+    const key = 'reward-' + w.id;
+    const d = el('details', { class: 'fold' },
+      el('summary', {}, el('span', {}, '内訳')),
+      el('div', { class: 'fold-body' }, el('div', { class: 'kv kv-plain' }, ...kvRows(rows))));
+    d.open = openFolds.has(key);
+    d.addEventListener('toggle', () => { if (d.open) openFolds.add(key); else openFolds.delete(key); });
+    return el('div', { class: 'card asset-hero' },
+      el('div', { class: 'sym' }, multi ? '保有枚数（' + (w.id === 'total' ? '合算' : w.name) + '）' : '保有枚数'),
+      el('div', { class: 'hero-row' }, el('span', { class: 'hero-val' }, fmtInt(w.share + reward) + ' ' + sym)),
+      el('div', { class: 'hero-folds' }, d));
   }));
 
   renderAsset(who, s);

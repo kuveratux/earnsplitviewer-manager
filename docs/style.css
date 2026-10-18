@@ -239,3 +239,5 @@ table.grid tr.total td, table.grid.sim tr.sim-ctl td { background: rgba(255, 255
 .eye[aria-pressed="false"] { color: #9cc1ff; }
 .asset-hero .hero-val { text-shadow: 0 0 18px rgba(90, 150, 255, .35); }
 dialog::backdrop { background: rgba(0, 0, 0, .6); }
+/* 内訳の見出しは折り返さない（旧ランク（〜日付）などを1行に） */
+.hero-folds .kv .k { white-space: nowrap; }
