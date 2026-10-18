@@ -119,7 +119,8 @@ function renderRewardTab(who, showTotal = true, opts = {}) {
     d.addEventListener('toggle', () => { if (d.open) openFolds.add(key); else openFolds.delete(key); });
     return el('div', { class: 'card asset-hero' },
       el('div', { class: 'sym' }, multi ? '保有枚数（' + labelOf_(w) + '）' : '保有枚数'),
-      el('div', { class: 'hero-row' }, el('span', { class: 'hero-val' }, fmtInt(w.share + reward) + ' ' + sym)),
+      el('div', { class: 'hero-row' }, el('span', { class: 'hero-val' }, fmtInt(w.share + reward) + ' ' + sym),
+        coinIcons[w.id] ? el('img', { class: 'coin-icon', src: coinIcons[w.id], alt: '' }) : null),
       el('div', { class: 'hero-folds' }, d));
   }));
 
@@ -326,6 +327,53 @@ $('withdrawInput').addEventListener('change', async () => {
   await putSetting('withdraw', withdraw);
   refreshAll();
 });
+// ---- コインのアイコン（報酬タブの保有枚数の右側。スマホの中の画像を選んで設定し、この端末の中だけに保存）
+// Manager は 合算・Manager・Agent の3つ、Agent は自分の1つ。画像は元の形のまま、長い辺を 160px に縮めた PNG（データ URL）で持つ
+let coinIcons = {};
+let coinPick = null; // 画像を選んでいる枠
+const COIN_MAX = 160;
+const coinSlots = () => (APP.id === 'manager'
+  ? [['total', '合算'], ['manager', (typeof memberName === 'function' && data ? memberName('manager') : 'Manager')], ['agent', (typeof memberName === 'function' && data ? memberName('agent') : 'Agent')]]
+  : [['agent', '保有枚数']]);
+function renderCoinIcons() {
+  const ul = $('coinIconList');
+  if (!ul) return;
+  ul.replaceChildren(...coinSlots().map(([id, label]) => el('li', {},
+    el('span', { class: 'coin-prev' }, coinIcons[id] ? el('img', { src: coinIcons[id], alt: '' }) : el('span', { class: 'muted' }, 'なし')),
+    el('div', { class: 'slot-text' }, el('b', {}, label)),
+    el('button', { type: 'button', onclick: () => { coinPick = id; $('coinIconFile').value = ''; $('coinIconFile').click(); } }, coinIcons[id] ? '選び直す' : '画像を選ぶ'),
+    coinIcons[id] ? el('button', { type: 'button', onclick: async () => { delete coinIcons[id]; await putSetting('coinIcons', coinIcons); refreshAll(); } }, '削除') : null)));
+}
+// 選んだ画像を縮めて PNG のデータ URL に（blob: は CSP で使えないので FileReader で読む）
+const readAsDataUrl = (file) => new Promise((ok, ng) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = () => ng(r.error); r.readAsDataURL(file); });
+async function shrinkImage(file) {
+  const img = new Image();
+  img.src = await readAsDataUrl(file);
+  await img.decode();
+  const k = Math.min(1, COIN_MAX / Math.max(img.naturalWidth, img.naturalHeight));
+  const c = document.createElement('canvas');
+  c.width = Math.max(1, Math.round(img.naturalWidth * k));
+  c.height = Math.max(1, Math.round(img.naturalHeight * k));
+  c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+  return c.toDataURL('image/png');
+}
+if ($('coinIconFile')) $('coinIconFile').addEventListener('change', async () => {
+  const f = $('coinIconFile').files[0];
+  if (!f || !coinPick) return;
+  try {
+    coinIcons[coinPick] = await shrinkImage(f);
+    await putSetting('coinIcons', coinIcons);
+    refreshAll();
+  } catch (e) {
+    alert('この画像は読み込めませんでした（' + (e && e.message ? e.message : '形式が違います') + '）。JPEG や PNG の画像を選んでください。');
+  }
+});
+ESV.renderers.push(renderCoinIcons);
+ESV.loaders.push(async () => {
+  const v = await getSetting('coinIcons');
+  coinIcons = v && typeof v === 'object' ? v : {};
+});
+
 ESV.loaders.push(async () => {
   simYears = [1, 3, 5, 10].includes(Number(await getSetting('simYears'))) ? Number(await getSetting('simYears')) : 3;
   withdraw = Number(await getSetting('withdraw')) || 0;

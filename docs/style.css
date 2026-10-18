@@ -273,3 +273,7 @@ html { background: var(--bg); }
 .status { flex: none; }
 /* ドライブの欄：ファイル名の下の作成・読み込み日時 */
 .slotlist .slot-meta { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+/* コインのアイコン：保有枚数の右側（元の形のまま枠に収める）と、設定タブの見本 */
+.asset-hero .coin-icon { margin-left: auto; height: 44px; width: auto; max-width: 88px; object-fit: contain; flex: none; }
+.slotlist .coin-prev { width: 44px; height: 44px; flex: none; display: flex; align-items: center; justify-content: center; border: 1px dashed var(--line); border-radius: 8px; font-size: 11px; }
+.slotlist .coin-prev img { max-width: 40px; max-height: 40px; object-fit: contain; }
