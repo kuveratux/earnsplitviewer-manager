@@ -72,14 +72,21 @@
       <div id="rewardNote" class="note" hidden></div>
       <div id="rewardBody">
         <div id="rewardCards"></div>
-        <h2 class="sec">3年後までの見込み</h2>
+        <h2 class="sec">運用シミュレーション</h2>
         <div class="chart-controls">
           <div id="modeSeg" class="seg" role="group" aria-label="計算方法">
             <button type="button" data-mode="simple" aria-pressed="true">単利</button>
             <button type="button" data-mode="compound" aria-pressed="false">複利</button>
           </div>
+          <div id="yearsSeg" class="seg" role="group" aria-label="期間">
+            <button type="button" data-years="1" aria-pressed="false">1年</button>
+            <button type="button" data-years="3" aria-pressed="true">3年</button>
+            <button type="button" data-years="5" aria-pressed="false">5年</button>
+            <button type="button" data-years="10" aria-pressed="false">10年</button>
+          </div>
           <select id="whoSel" aria-label="対象" hidden></select>
         </div>
+        <label class="trial-row">年間取り崩し：<input id="withdrawInput" type="number" inputmode="decimal" min="0" step="any" placeholder="0"><span id="withdrawUnit"></span><span id="withdrawPct" class="muted"></span></label>
         <div id="rewardChart"></div>
         <h2 class="sec">見込みの一覧</h2>
         <div class="scroll"><table id="rewardTable" class="grid"></table></div>

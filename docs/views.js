@@ -128,20 +128,33 @@ function renderRewardTab(who, showTotal = true) {
   const target = targets.find((t) => t.id === rewardWho);
   document.querySelectorAll('#modeSeg button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.mode === rewardMode)));
 
-  const proj = { simple: Reward.project(split, rk, now, 'simple'), compound: Reward.project(split, rk, now, 'compound') };
+  // 運用シミュレーション：期間（1・3・5・10年）、年間取り崩し（月に1回、その 1/12 を引く）
+  document.querySelectorAll('#yearsSeg button').forEach((b) => b.setAttribute('aria-pressed', String(Number(b.dataset.years) === simYears)));
+  const holding = target.share * (1 + s.factor); // 今日の保有枚数
+  if (document.activeElement !== $('withdrawInput')) $('withdrawInput').value = withdraw || '';
+  $('withdrawUnit').textContent = sym;
+  $('withdrawPct').textContent = withdraw > 0 && holding > 0 ? '（今日の保有枚数の ' + (withdraw / holding * 100).toFixed(1) + '%）' : '';
+  const months = simYears * 12;
+  const w = target.share > 0 ? withdraw / target.share : 0;
+  const proj = { simple: Reward.project(split, rk, now, 'simple', months, w), compound: Reward.project(split, rk, now, 'compound', months, w) };
   const label = (p) => (p.month === 0 ? '今日' : p.month % 12 === 0 ? (p.month / 12) + '年後' : p.month + 'か月後') + '（' + fmtDay(p.t) + '）';
   const points = proj[rewardMode].map((p) => ({ v: target.share * p.g, label: label(p) }));
+  const step = simYears <= 1 ? 3 : simYears <= 5 ? 12 : 24; // 目盛り（1年は3か月ごと、5年までは1年ごと、10年は2年ごと）
+  const ticks = [];
+  for (let m = 0; m <= months; m += step) ticks.push([m, m === 0 ? '今日' : m % 12 === 0 ? (m / 12) + '年後' : m + 'か月']);
   drawLineChart($('rewardChart'), points, {
-    unit: sym, fmt: fmtInt, xTicks: [[0, '今日'], [12, '1年後'], [24, '2年後'], [36, '3年後']],
-    title: target.name + ' の枚数の見込み（' + (rewardMode === 'simple' ? '単利' : '複利') + '）',
+    unit: sym, fmt: fmtInt, xTicks: ticks,
+    title: target.name + ' の枚数の見込み（' + (rewardMode === 'simple' ? '単利' : '複利') + '・' + simYears + '年）',
   });
 
-  // 表（グラフをなぞらなくても値が読めるように）
+  // 一覧：今日と、1年後〜選んだ年数後まで1年ごと
   const th = (t, n) => el('th', n ? { class: 'n' } : {}, t);
   const td = (t, n) => el('td', n ? { class: 'n' } : {}, t);
+  const rows = [];
+  for (let y = 0; y <= simYears; y++) rows.push(y * 12);
   $('rewardTable').replaceChildren(
-    el('tr', {}, th('時点'), th('単利（' + sym + '）', 1), th('複利（' + sym + '）', 1)),
-    ...[0, 12, 24, 36].map((m) => el('tr', {}, td(label(proj.simple[m])), td(fmtInt(target.share * proj.simple[m].g), 1), td(fmtInt(target.share * proj.compound[m].g), 1))));
+    el('tr', {}, th('時点'), th('単利', 1), th('複利', 1)),
+    ...rows.map((m) => el('tr', {}, td(label(proj.simple[m])), td(fmtInt(target.share * proj.simple[m].g) + ' ' + sym, 1), td(fmtInt(target.share * proj.compound[m].g) + ' ' + sym, 1))));
 }
 
 //--------------------------------------------------------------
@@ -286,6 +299,20 @@ ESV.loaders.push(async () => {
 });
 
 document.querySelectorAll('#modeSeg button').forEach((b) => b.addEventListener('click', () => { rewardMode = b.dataset.mode; refreshAll(); }));
+// 運用シミュレーションの期間と年間取り崩し（端末ごとに保存）
+let simYears = 3;
+let withdraw = 0;
+document.querySelectorAll('#yearsSeg button').forEach((b) => b.addEventListener('click', async () => { simYears = Number(b.dataset.years); await putSetting('simYears', simYears); refreshAll(); }));
+$('withdrawInput').addEventListener('change', async () => {
+  const v = Number($('withdrawInput').value);
+  withdraw = Number.isFinite(v) && v > 0 ? v : 0;
+  await putSetting('withdraw', withdraw);
+  refreshAll();
+});
+ESV.loaders.push(async () => {
+  simYears = [1, 3, 5, 10].includes(Number(await getSetting('simYears'))) ? Number(await getSetting('simYears')) : 3;
+  withdraw = Number(await getSetting('withdraw')) || 0;
+});
 $('whoSel').addEventListener('change', () => { rewardWho = $('whoSel').value; refreshAll(); });
 // 画面の幅が変わったらグラフを描き直す（タブを開いたときも）
 let rewardResize = null;

@@ -240,4 +240,8 @@ table.grid tr.total td, table.grid.sim tr.sim-ctl td { background: rgba(255, 255
 .asset-hero .hero-val { text-shadow: 0 0 18px rgba(90, 150, 255, .35); }
 dialog::backdrop { background: rgba(0, 0, 0, .6); }
 /* 内訳の見出しは折り返さない（旧ランク（〜日付）などを1行に） */
-.hero-folds .kv .k { white-space: nowrap; }
+.hero-folds .kv .k, .hero-folds .kv .v { white-space: nowrap; }
+.hero-folds .kv > div { font-size: 13px; padding: 5px 0; }
+/* 運用シミュレーション：年間取り崩しの入力欄（6桁分）と％ */
+#withdrawInput { width: calc(6ch + 10px); }
+#withdrawPct { font-size: 12px; }

@@ -55,7 +55,10 @@ const Reward = (() => {
 
   // 見込み。今日から months か月後まで、1か月ごとの倍率（元の1枚あたりの枚数）を返す
   // mode：'simple' | 'compound'。[{ t（その日の日本時間 0:00）, k（その時点の日数）, g（倍率） }]
-  function project(split, rk, now, mode, months = 36) {
+  // withdraw：年間の取り崩し（元の1枚あたりの枚数。例：取り分 4,800 で年 480 枚なら 0.1）。月に1回、その 1/12 を引く（0 で止める）
+  //   単利：取り崩した分だけ、報酬の元（p）も減る。複利：その時点の枚数に年利をかけるので、引いた分だけ報酬も減る
+  //   年利：取り崩しで枚数が減っても下げない（年利は別管理。ユーザー決定）。複利で増えてランクが上がったときは上げる
+  function project(split, rk, now, mode, months = 36, withdraw = 0) {
     const s = settled(split, rk, now);
     const today = addMonthsJst(now, 0);
     const points = [];
@@ -63,19 +66,28 @@ const Reward = (() => {
       const t = i === 0 ? now : addMonthsJst(today, i);
       points.push({ t, k: Math.max(s.days, Math.floor((t - split.t) / DAY)), month: i });
     }
-    let g = 1 + s.factor;
+    const monthly = withdraw > 0 ? withdraw / 12 : 0;
+    let g = 1 + s.factor; // 保有枚数（元の1枚あたり）
+    let base = 1;         // 単利の報酬の元（元の1枚あたり）
     let k = s.days;
     for (const p of points) {
       for (; k < p.k; ) {
         k++;
         const table = tableOn(split, rk, k);
         if (mode === 'compound') {
-          const r = rankFor(table, s.total * g);
+          // 取り崩しで減ってもランクは下げない：今の倍率と 1（取り崩し前の元）の大きいほうで判定
+          const r = rankFor(table, s.total * Math.max(g, 1));
           g += g * (r ? r.rate : 0) / 365;
         } else {
           const r = rankFor(table, s.total);
-          g += (r ? r.rate : 0) / 365;
+          g += base * (r ? r.rate : 0) / 365;
         }
+      }
+      // 月に1回の取り崩し（今日は引かない）
+      if (monthly && p.month > 0) {
+        const take = Math.min(monthly, g);
+        g -= take;
+        base = Math.max(0, base - take);
       }
       p.g = g;
     }
