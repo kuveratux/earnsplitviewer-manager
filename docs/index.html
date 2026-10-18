@@ -7,7 +7,7 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://accounts.google.com/gsi/client https://apis.google.com https://www.gstatic.com; style-src 'self' 'unsafe-inline' https://accounts.google.com/gsi/style; img-src 'self' data: https://*.googleusercontent.com https://ssl.gstatic.com https://www.gstatic.com; connect-src 'self' https://www.googleapis.com https://accounts.google.com/gsi/; frame-src https://accounts.google.com/gsi/ https://docs.google.com https://drive.google.com https://content.googleapis.com; manifest-src 'self'; worker-src 'self'; base-uri 'self'; form-action 'none'">
 <!-- 送るのはサイト名（https://kuveratux.github.io/）だけ。API キーのウェブサイト制限の判定に必要 -->
 <meta name="referrer" content="strict-origin">
-<meta name="theme-color" content="#1f6b5c">
+<meta name="theme-color" content="#050912">
 <title>ESV Manager</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon-192.png">
@@ -21,15 +21,15 @@
 </head>
 <body>
 <header class="bar">
-  <div class="title"><h1>ESV Manager</h1><span class="role">Manager</span></div>
+  <div class="title"><h1>EARN SPLIT VIEWER</h1><span class="role">Manager</span></div>
   <span id="status" class="status"></span>
 </header>
 
 <nav class="tabs" role="tablist">
   <button role="tab" data-tab="reward" aria-selected="true">報酬</button>
-  <button role="tab" data-tab="asset" aria-selected="false">資産</button>
   <button role="tab" data-tab="tx" aria-selected="false">取引履歴</button>
   <button role="tab" data-tab="settings" aria-selected="false">設定</button>
+  <button role="tab" data-tab="asset" aria-selected="false">資産</button>
 </nav>
 
 <div id="updateNote" class="note update" hidden>新しいバージョンがあります。<button id="reloadBtn" class="primary">更新する</button></div>

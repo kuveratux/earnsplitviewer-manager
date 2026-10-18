@@ -1,46 +1,21 @@
+/* 配色：濃紺の暗い配色（サンプル画面の雰囲気に合わせる。2026-10 ユーザー指示）。端末の明暗に関係なく暗い配色で表示する */
 :root {
-  --bg: #f5f6f8;
-  --card: #ffffff;
-  --text: #1d2330;
-  --muted: #5d6675;
-  --line: #dde1e7;
-  --accent: #1f6b5c;
-  --bar: #1f6b5c;
-  --in: #1a7f45;
-  --out: #b3401f;
-  --note-bg: #fff4d6;
-  --note-text: #5a4300;
-  color-scheme: light;
-}
-/* 配色：「自動」は端末に合わせ、「ライト」「ダーク」は設定で固定（html の data-theme） */
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --bg: #14171c;
-    --card: #1e232b;
-    --text: #e6e9ee;
-    --muted: #9aa3b0;
-    --line: #333a45;
-    --accent: #2f9c80;
-    --bar: #123029;
-    --in: #5fcf8d;
-    --out: #f08a6e;
-    --note-bg: #4a3c12;
-    --note-text: #f5e2a8;
-    color-scheme: dark;
-  }
-}
-:root[data-theme="dark"] {
-  --bg: #14171c;
-  --card: #1e232b;
-  --text: #e6e9ee;
-  --muted: #9aa3b0;
-  --line: #333a45;
-  --accent: #2f9c80;
-  --bar: #123029;
-  --in: #5fcf8d;
-  --out: #f08a6e;
-  --note-bg: #4a3c12;
-  --note-text: #f5e2a8;
+  --bg: #060a14;
+  --card: #0c1428;
+  --card-2: #0a1122;
+  --text: #eef2fb;
+  --muted: #9aa8c4;
+  --line: rgba(150, 178, 230, .32);
+  --edge: rgba(185, 205, 240, .55);
+  --accent: #4f8dff;
+  --accent-2: #2a5bd7;
+  --glow: rgba(90, 150, 255, .55);
+  --bar: #050912;
+  --in: #5fd59a;
+  --out: #ff8a7a;
+  --note-bg: rgba(250, 200, 80, .12);
+  --note-text: #f3d68f;
+  --chart-line: #4f8dff;
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
@@ -156,17 +131,14 @@ table.grid tr.total td { font-weight: 700; background: var(--bg); }
 .shares { display: grid; grid-template-columns: auto 1fr; gap: 0 10px; font-size: 13px; margin-top: 4px; }
 .shares b { text-align: right; font-variant-numeric: tabular-nums; }
 /* 区分 */
-.tag.cls-split { color: #8a5a00; border-color: #e0b85c; background: #fff4d6; }
-.tag.cls-manager { color: #1f4f9a; border-color: #9db8e6; }
-.tag.cls-agent { color: #7a2e8a; border-color: #cfa3d8; }
-.tag.cls-deposit { color: #1f6b5c; border-color: #8fcab8; }
-.tag.cls-receive { color: #8a3b1f; border-color: #e0a58f; }
+.tag.cls-split { color: #f3d68f; border-color: rgba(243, 214, 143, .6); background: rgba(250, 200, 80, .1); }
+.tag.cls-manager { color: #9cc1ff; border-color: rgba(156, 193, 255, .55); }
+.tag.cls-agent { color: #d6a8ff; border-color: rgba(214, 168, 255, .55); }
+.tag.cls-deposit { color: #7fe0c6; border-color: rgba(127, 224, 198, .55); }
+.tag.cls-receive { color: #ffb199; border-color: rgba(255, 177, 153, .55); }
 .kv.kv-plain { border: 0; border-radius: 0; background: none; margin-top: 4px; }
 .kv.kv-plain > div { padding: 5px 0; }
 /* 報酬・グラフ */
-:root { --chart-line: #0f8a6c; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --chart-line: #2f9c80; } }
-:root[data-theme="dark"] { --chart-line: #2f9c80; }
 .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
 .seg button { border: 0; border-radius: 0; padding: 6px 14px; background: var(--card); color: var(--muted); }
 .seg button[aria-pressed="true"] { background: var(--accent); color: #fff; font-weight: 600; }
@@ -233,3 +205,37 @@ table.grid.sim tr:first-child th { white-space: nowrap; }
 table.grid.sim tr.sim-ctl td { padding: 6px 8px; background: var(--bg); }
 .sim-ctl-in { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .sim-ctl-in .seg button { padding: 4px 12px; }
+
+/* ---- サンプル画面の雰囲気：濃紺のグラデーションの背景、銀青の細い枠のカード、上辺が光る、暗い地に明るい枠のボタン ---- */
+body { background: radial-gradient(120% 60% at 50% -10%, #12234a 0%, #08101f 45%, var(--bg) 75%) fixed, var(--bg); }
+.bar { background: linear-gradient(180deg, #0a1428, var(--bar)); border-bottom: 1px solid var(--line); }
+.bar h1 { letter-spacing: .06em; font-weight: 800; }
+.tabs { background: rgba(6, 10, 20, .92); backdrop-filter: blur(6px); }
+.tabs button[aria-selected="true"] { color: #fff; border-bottom-color: var(--accent); text-shadow: 0 0 10px var(--glow); }
+.card, .fold > summary, .kv, .scroll, .txlist li, .booklist li, .ch-wrap, dialog {
+  background: linear-gradient(180deg, var(--card) 0%, var(--card-2) 100%);
+  border-color: var(--edge);
+}
+.card { position: relative; border-radius: 14px; }
+/* カードの上辺の光 */
+.card::before { content: ''; position: absolute; top: -1px; left: 18%; right: 18%; height: 2px; border-radius: 2px;
+  background: linear-gradient(90deg, transparent, #9cc4ff, transparent); box-shadow: 0 0 14px 3px var(--glow); pointer-events: none; }
+.cards .card::before, .hero-folds .card::before { left: 25%; right: 25%; }
+button, .button { background: var(--card-2); border-color: var(--edge); color: var(--text); }
+button.primary, .button.primary { background: linear-gradient(180deg, #3f78f0, var(--accent-2)); border-color: rgba(160, 195, 255, .7); color: #fff; box-shadow: 0 0 12px rgba(70, 130, 255, .35); }
+.seg { border-color: var(--edge); background: var(--card-2); }
+.seg button { background: transparent; color: var(--muted); }
+.seg button[aria-pressed="true"] { background: linear-gradient(180deg, #4a7ff0, var(--accent-2)); color: #fff; box-shadow: inset 0 0 0 1px rgba(170, 200, 255, .5); }
+.field input, .field select, .filters select, .filters input, .chart-controls select, .trial-row input {
+  background: var(--card-2); border-color: var(--edge); color: var(--text);
+}
+table.grid th { background: transparent; }
+table.grid tr.total td, table.grid.sim tr.sim-ctl td { background: rgba(255, 255, 255, .03); }
+.hero-folds .fold > summary, .hero-folds .fold-body { background: rgba(255, 255, 255, .03); }
+.fold-body { background: var(--card-2); border-color: var(--edge); }
+.cp { color: #9cc1ff; }
+.role { border-color: rgba(185, 205, 240, .7); }
+.eye { background: var(--card-2); }
+.eye[aria-pressed="false"] { color: #9cc1ff; }
+.asset-hero .hero-val { text-shadow: 0 0 18px rgba(90, 150, 255, .35); }
+dialog::backdrop { background: rgba(0, 0, 0, .6); }

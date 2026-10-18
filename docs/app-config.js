@@ -2,7 +2,8 @@
 // 同じドメイン（kuveratux.github.io）で取引ビューア・Agent と並ぶため、端末内の保存名をアプリごとに分ける
 self.ESV_APP = {
   id: 'manager',
-  defaultName: 'ESV Manager',
+  defaultName: 'ESV Manager',   // ホーム画面の名前（2つのアプリを見分けるため短く）
+  title: 'EARN SPLIT VIEWER',     // 画面上部の見出し（横に丸囲みの Manager／Agent）
   db: 'esv-manager',               // IndexedDB
   lsAppearance: 'esvm-appearance', // localStorage（表示と配色の写し）
   cachePrefix: 'esvm-shell-',      // Service Worker の保管庫（この接頭辞のものだけ削除する）

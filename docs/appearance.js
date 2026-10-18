@@ -1,11 +1,11 @@
 'use strict';
 
-// 表示（名前・アイコン・配色）。画面が描かれる前に反映するため <head> で読み込む（app-config.js の後）
+// 表示（名前・配色）。画面が描かれる前に反映するため <head> で読み込む（app-config.js の後）
 // 「表示と配色」の設定はなくした（2026-10 ユーザー指示）。名前・アイコンは標準、配色は端末の明暗に合わせる
 
 const APPEARANCE_DEFAULT = { name: '', theme: 'auto' };
 const APP_NAME_DEFAULT = self.ESV_APP.defaultName;
-const THEME_COLOR = { light: '#1f6b5c', dark: '#123029' };
+const THEME_COLOR = { light: '#050912', dark: '#050912' }; // 暗い配色に統一したので、どちらも同じ
 
 function resolvedTheme() {
   return window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
@@ -17,8 +17,9 @@ function applyAppearance() {
   const set = (sel, attr, v) => { const e = document.querySelector(sel); if (e) e.setAttribute(attr, v); };
   set('meta[name="apple-mobile-web-app-title"]', 'content', APP_NAME_DEFAULT);
   set('meta[name="theme-color"]', 'content', THEME_COLOR[resolvedTheme()]);
+  // 画面上部の見出しは「EARN SPLIT VIEWER」（ホーム画面の名前は見分けられるよう ESV Manager／ESV Agent のまま）
   const h1 = document.querySelector('.bar h1');
-  if (h1) h1.textContent = APP_NAME_DEFAULT;
+  if (h1) h1.textContent = self.ESV_APP.title || APP_NAME_DEFAULT;
 }
 
 (function init() {
