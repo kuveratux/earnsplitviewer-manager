@@ -105,9 +105,8 @@
             <button id="eyeBtn" type="button" class="eye" aria-pressed="true" aria-label="金額を隠す"></button>
           </div>
           <div id="heroSub" class="muted"></div>
+          <div id="assetList" class="hero-folds"></div>
         </div>
-        <h2 class="sec">資産額の内訳</h2>
-        <div id="assetList"></div>
         <h2 class="sec">シミュレーション</h2>
         <div class="card">
           <p id="assetPrice" class="muted"></p>
@@ -119,11 +118,11 @@
               <button type="button" data-period="month" aria-pressed="false">月</button>
               <button type="button" data-period="year" aria-pressed="false">年</button>
             </div>
+            <span id="rateNow" class="rate-now"></span>
             <select id="simSel" aria-label="対象"></select>
           </div>
           <div class="scroll"><table id="simTable" class="grid sim"></table></div>
         </div>
-        <p class="muted">購入分の平均単価＝購入金額の合計÷購入枚数。総枚数の平均単価＝購入金額の合計÷総枚数（預入＋報酬）。資産額＝総枚数×現在価格。含み損益＝資産額−購入金額の合計。シミュレーションの報酬は今の年利で計算した目安です（月＝年÷12。円は、それぞれの価格で換算）。試算価格と、目のマークでの金額の表示・非表示は、この端末だけの設定です。</p>
       </div>
     </div>
   </section>

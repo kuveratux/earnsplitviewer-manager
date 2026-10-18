@@ -195,15 +195,16 @@ function renderAsset(who, s) {
     const c = calc(w);
     const rows = [
       ['総枚数（預入＋報酬）', fmtInt(c.coins) + ' ' + sym],
-      ['購入枚数', c.buys.length ? fmtInt(c.qty) + ' ' + sym + '（' + c.buys.length + ' 件）' : '購入の記録なし'],
+      ['報酬枚数', fmtInt(w.share * s.factor) + ' ' + sym],
+      ['購入枚数', c.buys.length ? fmtInt(c.qty) + ' ' + sym : '購入の記録なし'],
       ['購入金額', c.buys.length ? yen(c.cost) : na],
       ['購入分の平均単価', c.qty > 0 ? yenUnit(c.cost / c.qty) : na],
       ['総枚数の平均単価', c.coins > 0 && c.buys.length ? yenUnit(c.cost / c.coins) : na],
-      ['資産額', price ? yen(c.coins * price) : na],
-      ['含み損益', price ? gain(c, price) : na],
     ];
+    // 見出し：Manager は対象の名前と資産額、Agent は「内訳」だけ（一番上の資産額と同じなので）
+    const multi = who.length > 1;
     const d = el('details', { class: 'fold' },
-      el('summary', {}, el('span', {}, w.name), el('span', { class: 'fold-val' }, price ? yen(c.coins * price) : fmtInt(c.coins) + ' ' + sym)),
+      el('summary', {}, el('span', {}, multi ? w.name : '内訳'), multi ? el('span', { class: 'fold-val' }, price ? yen(c.coins * price) : fmtInt(c.coins) + ' ' + sym) : null),
       el('div', { class: 'fold-body' }, el('div', { class: 'kv kv-plain' }, ...kvRows(rows))));
     d.open = openFolds.has(w.id);
     d.addEventListener('toggle', () => { if (d.open) openFolds.add(w.id); else openFolds.delete(w.id); });
@@ -226,7 +227,8 @@ function renderAsset(who, s) {
   if (document.activeElement !== $('trialInput')) $('trialInput').value = trialPrice || '';
   $('trialInput').placeholder = '例：' + (price ? String(Math.round(price * 2 * 100) / 100) : '20');
   document.querySelectorAll('#periodSeg button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.period === assetPeriod)));
-  $('assetPrice').textContent = '現在価格：' + (price ? yenUnit(price) : '未設定') + '　今の年利：' + (s.rankNow ? s.rankNow.name + ' ' + pct(s.rateNow) : 'ランク外 0%');
+  $('assetPrice').textContent = '現在価格：' + (price ? yenUnit(price) : '未設定');
+  $('rateNow').textContent = s.rankNow ? s.rankNow.name + ' ' + pct(s.rateNow) : 'ランク外 0%';
   if ($('simSel')) {
     if ($('simSel').options.length !== who.length) $('simSel').replaceChildren(...who.map((w) => el('option', { value: w.id }, w.name)));
     if (!who.some((w) => w.id === simWho)) simWho = who[0].id;

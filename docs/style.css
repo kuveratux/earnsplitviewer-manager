@@ -217,3 +217,9 @@ table.grid tr.total td { font-weight: 700; background: var(--bg); }
 table.grid.sim th, table.grid.sim td { white-space: normal; }
 table.grid.sim tr > th:first-child { width: 28%; }
 .sim-sub { font-size: 11px; color: var(--muted); font-weight: 400; }
+/* 一番上の欄の中の内訳、期間のボタンの横の年利 */
+.hero-folds { margin-top: 8px; }
+.hero-folds .fold { margin: 6px 0 0; }
+.hero-folds .fold > summary { font-size: 14px; padding: 8px 10px; background: var(--bg); }
+.hero-folds .fold-body { background: var(--bg); }
+.rate-now { font-size: 13px; font-weight: 600; color: var(--muted); }
