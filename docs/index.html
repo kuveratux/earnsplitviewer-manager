@@ -26,8 +26,8 @@
 </header>
 
 <nav class="tabs" role="tablist">
-  <button role="tab" data-tab="asset" aria-selected="false">資産</button>
-  <button role="tab" data-tab="reward" aria-selected="true">報酬</button>
+  <button role="tab" data-tab="asset" aria-selected="true">資産</button>
+  <button role="tab" data-tab="reward" aria-selected="false">報酬</button>
   <button role="tab" data-tab="tx" aria-selected="false">取引履歴</button>
   <button role="tab" data-tab="settings" aria-selected="false">設定</button>
 </nav>
@@ -63,7 +63,7 @@
   </section>
 
   <!-- 報酬 -->
-  <section id="tab-reward" class="tab">
+  <section id="tab-reward" class="tab" hidden>
     <div class="card whenEmpty" hidden>
       <h2>データがありません</h2>
       <p class="muted">「設定」タブの「最新データを取得」（またはファイルから読み込む）で、データとランク表を読み込んでください。</p>
@@ -90,7 +90,7 @@
   </section>
 
   <!-- 資産 -->
-  <section id="tab-asset" class="tab" hidden>
+  <section id="tab-asset" class="tab">
     <div class="card whenEmpty" hidden>
       <h2>データがありません</h2>
       <p class="muted">「設定」タブの「最新データを取得」（またはファイルから読み込む）で、データとランク表を読み込んでください。</p>
