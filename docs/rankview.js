@@ -17,6 +17,8 @@ const RANK_PAGE = 100; // 一度に出す件数（「さらに表示」で増や
 let rankListKind = 'holders';
 let rankShown = RANK_PAGE;
 let rankCache = { key: '', view: null };
+let rankSelfName = ''; // Agent アプリ：ランキングでの自分の表示名（空欄なら「自分」。端末の中だけ）
+let rankJump = null;   // 推定順位を押したときに移る行（分配の行の id）
 
 // 開いた時点（分単位）の4つの観点。同じ分のうちは作り直さない
 function rankingView(now) {
@@ -47,7 +49,8 @@ const fishBadge = (name, big) => el('span', { class: 'fish' + (big ? ' big' : ''
 // 分配後の持ち分（Manager 分・Agent 分）。Agent アプリは Manager 分を一覧に出さないが、人数・順位には数える
 function splitShares(split) {
   if (!split) return [];
-  const name = (id) => (typeof memberName === 'function' ? memberName(id) : id === 'agent' ? (data.member && data.member.name) || 'Agent' : 'Manager');
+  // Manager アプリ：Manager 分・Agent 分を名前で区別。Agent アプリ：自分の行は「自分」（設定の「ランキングでの表示名」で変えられる）
+  const name = (id) => (typeof memberName === 'function' ? memberName(id) : id === 'agent' ? (rankSelfName || '').trim() || '自分' : 'Manager');
   const isMgr = APP.id === 'manager';
   const agent = isMgr ? split.shares.agent : split.share;
   const manager = isMgr ? split.shares.manager : Number(split.amount) - split.share;
@@ -92,7 +95,8 @@ function renderRankingTab(targets) {
         el('div', { class: 'hero-row' }, coinIcons[w.id] ? el('img', { class: 'coin-icon', src: coinIcons[w.id], alt: '' }) : null,
           el('span', { class: 'hero-val' }, fmtInt(amount) + ' ' + sym)),
         el('div', { class: 'rank-est' }, fishBadge(f, true),
-          el('div', {}, el('div', { class: 'rank-est-no' }, '推定 ', el('b', {}, est.toLocaleString('ja-JP') + '位'), el('span', { class: 'muted' }, '（全 ' + of.toLocaleString('ja-JP') + '人中）')),
+          el('div', {}, el(row && row.split.show ? 'button' : 'div', { class: 'rank-est-no' + (row && row.split.show ? ' jump' : ''), type: 'button', onclick: row && row.split.show ? () => jumpToRank(w.id) : null },
+            '推定 ', el('b', {}, est.toLocaleString('ja-JP') + '位'), el('span', { class: 'muted' }, '（全 ' + of.toLocaleString('ja-JP') + '人中）')),
             el('div', { class: 'muted' }, f + '（' + FISH_JA[f] + '）・総供給量の ' + (amount / v.supply * 100).toFixed(3) + '%'))));
     }));
 
@@ -102,20 +106,39 @@ function renderRankingTab(targets) {
   const shown = list.slice(0, rankShown);
   $('rankList').replaceChildren(...shown.map((r) => {
     const sub = rankListKind === 'holders'
-      ? (r.split ? '分配 ' + fmtInt(r.principal) + '・報酬 ' + fmtInt(r.reward) : '手元 ' + fmtInt(r.wallet) + (r.principal > 0 ? '・預入 ' + fmtInt(r.principal) + '・報酬 ' + fmtInt(r.reward) : '')) + '（' + r.share.toFixed(2) + '%）'
-      : (r.rankName ? r.rankName + ' ' + pct(r.rate) : 'ランク外') + '・' + (r.split ? '分配 ' : '元本 ') + fmtInt(r.principal) + '・報酬 ' + fmtInt(r.reward);
-    return el('li', { class: 'rank-row' + (r.split ? ' self' : '') },
+      ? (r.split ? '預入 ' + fmtInt(r.principal) + '・報酬 ' + fmtInt(r.reward) : '手元 ' + fmtInt(r.wallet) + (r.principal > 0 ? '・預入 ' + fmtInt(r.principal) + '・報酬 ' + fmtInt(r.reward) : '')) + '（' + r.share.toFixed(2) + '%）'
+      : (r.rankName ? r.rankName + ' ' + pct(r.rate) : 'ランク外') + '・' + '元本 ' + fmtInt(r.principal) + '・報酬 ' + fmtInt(r.reward);
+    return el('li', { class: 'rank-row' + (r.split ? ' self' : ''), ...(r.split ? { 'data-split': r.split.id } : {}) },
       el('div', { class: 'rank-line' },
         el('span', { class: 'rk-no' }, String(r.no)),
         r.split ? null : rankChange(rankListKind, r.address, r.otherNo),
         rankListKind === 'holders' ? fishBadge(r.fish) : null,
         r.split ? el('span', { class: 'rk-name' }, r.split.name) : el('button', { class: 'cp', type: 'button', onclick: () => openNameDialog(r.address) }, nameOf(r.address)),
-        r.split ? el('span', { class: 'cat' }, '分配') : null,
         el('span', { class: 'rk-total' }, fmtInt(r.total) + ' ' + sym)),
       el('div', { class: 'rank-sub' }, sub));
   }));
   $('rankMore').hidden = list.length <= rankShown;
   $('rankMore').textContent = 'さらに表示（' + Math.min(RANK_PAGE, list.length - rankShown) + '件／残り ' + (list.length - rankShown) + '件）';
+  // 推定順位を押したとき：その行まで移って、一瞬光らせる
+  if (rankJump) {
+    const li = document.querySelector('#rankList li[data-split="' + rankJump + '"]');
+    rankJump = null;
+    if (li) {
+      const top = li.getBoundingClientRect().top + window.scrollY - window.innerHeight / 3;
+      window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+      li.classList.remove('flash'); void li.offsetWidth; li.classList.add('flash');
+    }
+  }
+}
+
+// 推定順位を押したとき：保有者ランキングに切り替え、その行が出るまで表示を広げてから移る
+function jumpToRank(id) {
+  rankListKind = 'holders';
+  const li = () => document.querySelector('#rankList li[data-split="' + id + '"]');
+  rankJump = id;
+  rankShown = Math.max(rankShown, RANK_PAGE);
+  refreshAll();
+  for (let guard = 0; !li() && !$('rankMore').hidden && guard < 50; guard++) { rankShown += RANK_PAGE; rankJump = id; refreshAll(); }
 }
 
 document.querySelectorAll('#rankSeg button').forEach((b) => b.addEventListener('click', () => { rankListKind = b.dataset.list; rankShown = RANK_PAGE; refreshAll(); }));

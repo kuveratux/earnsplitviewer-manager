@@ -340,8 +340,14 @@ main { overflow-x: clip; }
 .rk-chg.new { color: #f0c35a; border-color: currentColor; }
 .rk-chg.same { color: var(--muted); }
 .rank-sub { font-size: 12px; color: var(--muted); margin: 2px 0 0 calc(2.2em + 6px); font-variant-numeric: tabular-nums; }
-.ranklist li.self { box-shadow: inset 3px 0 0 var(--accent); }
 .tabs button span { white-space: nowrap; }
 /* 1.4.1：コインのアイコンを少し大きく（34px → 40px）。分配の行の名前 */
 .asset-hero .coin-icon { height: 40px; max-width: 80px; }
 .rk-name { flex: 1; min-width: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* 1.4.2：分配の行（自分）は枠全体を強調。推定順位を押すとその行へ移り、一瞬光る */
+.ranklist li.rank-row.self { border: 2px solid #6fa3ff; background: linear-gradient(180deg, rgba(63, 124, 245, .22), rgba(63, 124, 245, .10)); box-shadow: 0 0 14px rgba(70, 130, 255, .45); }
+.ranklist li.rank-row.self .rk-name { color: #fff; }
+.rank-est-no.jump { background: none; border: 0; padding: 0; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.rank-est-no.jump b { text-decoration: underline; text-decoration-color: rgba(156, 196, 255, .6); text-underline-offset: 4px; }
+@keyframes rk-flash { 0%, 60% { box-shadow: 0 0 0 3px #fff, 0 0 24px rgba(120, 170, 255, .9); } 100% { box-shadow: 0 0 14px rgba(70, 130, 255, .45); } }
+.ranklist li.rank-row.self.flash { animation: rk-flash 1.4s ease-out; }
