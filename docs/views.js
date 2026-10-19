@@ -92,7 +92,7 @@ function renderRewardTab(who, showTotal = true, opts = {}) {
   const s = Reward.settled(split, rk, now);
   const rankText = (r, rate) => (r ? r.name + ' ' + pct(rate) : 'ランク外 0%');
 
-  // 保有枚数（預入＋報酬）のカード。数字は資産タブの資産額と同じ大きさ。内訳は折りたたみ（最初は閉じる）
+  // 保有枚数（預入＋報酬）のカード。数字は資産タブの資産額と同じ大きさ。内訳は折りたたみ（起動時は開く）
   const multi = APP.id === 'manager'; // Manager は対象名を添える
   const rewardList = opts.rewardWho || who;
   const newStart = Date.parse(ranks.new.startDate + 'T00:00:00+09:00') / 1000;
@@ -115,8 +115,8 @@ function renderRewardTab(who, showTotal = true, opts = {}) {
     const d = el('details', { class: 'fold' },
       el('summary', {}, el('span', {}, '内訳')),
       el('div', { class: 'fold-body' }, el('div', { class: 'kv kv-plain' }, ...kvRows(rows))));
-    d.open = openFolds.has(key);
-    d.addEventListener('toggle', () => { if (d.open) openFolds.add(key); else openFolds.delete(key); });
+    d.open = !closedFolds.has(key);
+    d.addEventListener('toggle', () => { if (d.open) closedFolds.delete(key); else closedFolds.add(key); });
     return el('div', { class: 'card asset-hero' },
       el('div', { class: 'sym' }, multi ? '保有枚数（' + labelOf_(w) + '）' : '保有枚数'),
       el('div', { class: 'hero-row' }, coinIcons[w.id] ? el('img', { class: 'coin-icon', src: coinIcons[w.id], alt: '' }) : null,
@@ -204,7 +204,8 @@ function purchasesOf(id) {
 }
 
 let simWho = '';
-const openFolds = new Set(); // 開いている内訳（描き直しても開いたままにする）
+// 資産額・保有枚数の内訳は、起動時は開いておく（2026-10 ユーザー指示）。利用者が閉じたものだけを覚えて、描き直しても閉じたままにする（起動し直すと開く）
+const closedFolds = new Set();
 
 // who：一番上と内訳に出す対象（順番どおり。一番上はその1番目）、all：シミュレーションの対象の選択に出す対象
 function renderAsset(who, s, all = who) {
@@ -242,7 +243,7 @@ function renderAsset(who, s, all = who) {
       : c.cost > 0 ? '含み損益 ' + gain(c, price) : '購入の記録はありません';
   }
 
-  // 資産額の内訳（対象ごとに折りたたみ。最初は閉じる）
+  // 資産額の内訳（対象ごとに折りたたみ。起動時は開く）
   $('assetList').replaceChildren(...who.map((w) => {
     const c = calc(w);
     const rows = [
@@ -258,8 +259,8 @@ function renderAsset(who, s, all = who) {
     const d = el('details', { class: 'fold' },
       el('summary', {}, el('span', {}, multi ? w.name : '内訳'), multi ? el('span', { class: 'fold-val' }, price ? yen(c.coins * price) : fmtInt(c.coins) + ' ' + sym) : null),
       el('div', { class: 'fold-body' }, el('div', { class: 'kv kv-plain' }, ...kvRows(rows))));
-    d.open = openFolds.has(w.id);
-    d.addEventListener('toggle', () => { if (d.open) openFolds.add(w.id); else openFolds.delete(w.id); });
+    d.open = !closedFolds.has(w.id);
+    d.addEventListener('toggle', () => { if (d.open) closedFolds.delete(w.id); else closedFolds.add(w.id); });
     return d;
   }));
 
