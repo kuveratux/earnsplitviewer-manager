@@ -294,7 +294,7 @@ function renderAsset(who, s, all = who) {
   const th = (t, n) => el('th', n ? { class: 'n' } : {}, t);
   const cell = (main, sub) => el('td', { class: 'n' }, main, sub ? el('div', { class: 'sim-sub' }, sub) : null);
   const col = (pr) => pr
-    ? [cell(yen(c.coins * pr)), cell(c.cost > 0 ? signedYen(c.coins * pr - c.cost) : na, c.cost > 0 ? signedPct((c.coins * pr - c.cost) / c.cost) : null), cell(yen(c.reward * pr), fmtDec2(c.reward) + ' ' + sym)]
+    ? [cell(yen(c.coins * pr), showYen && c.coins * pr >= 1e4 ? '（' + yenUnitText(c.coins * pr) + '）' : null), cell(c.cost > 0 ? signedYen(c.coins * pr - c.cost) : na, c.cost > 0 ? signedPct((c.coins * pr - c.cost) / c.cost) : null), cell(yen(c.reward * pr), fmtDec2(c.reward) + ' ' + sym)]
     : [cell(na), cell(na), cell(na, fmtDec2(c.reward) + ' ' + sym)];
   const now = col(price);
   const tri = col(trial);
@@ -346,7 +346,13 @@ function yenUnitText(v) {
   if (v >= 1e8) return (Math.floor(v / 1e7) / 10).toFixed(1) + '億円';
   return (Math.round(v / 1e3) / 10).toLocaleString('ja-JP', { maximumFractionDigits: 1 }) + '万円';
 }
-const showYenUnit = () => { $('wdYenUnit').textContent = yenUnitText(Number($('wdYen').value)); };
+// 年間希望報酬の横：1行目「年間：○○」、2行目 引出しの期間あたり「1日：○○」など（引出しを切り替えると変わる）
+const showYenUnit = () => {
+  const v = Number($('wdYen').value);
+  const per = { day: 365, week: 52, month: 12, year: 1 }[wdFreq];
+  const ja = { day: '1日', week: '1週', month: '1か月', year: '1年' }[wdFreq];
+  $('wdYenUnit').replaceChildren(...(v > 0 ? [el('span', {}, '年間：' + yenUnitText(v)), ...(per > 1 ? [el('span', {}, ja + '：' + yenUnitText(v / per))] : [])] : []));
+};
 $('wdYen').addEventListener('input', showYenUnit);
 document.querySelectorAll('#wdFreqSeg button').forEach((b) => b.addEventListener('click', async () => { wdFreq = b.dataset.freq; await putSetting('wdFreq', wdFreq); refreshAll(); }));
 // ---- コインのアイコン（報酬タブの保有枚数の数値の前。スマホの中の画像を選んで設定し、この端末の中だけに保存）

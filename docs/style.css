@@ -395,5 +395,6 @@ main { overflow-x: clip; }
 .yen-unit { margin-left: 8px; color: var(--muted); font-size: 13px; white-space: nowrap; }
 /* 1.7.3：表のタイトル行（1行目の見出し）は中央そろえ（行の左端の見出しはそのまま） */
 table.grid tr:first-child > th { text-align: center !important; }
-/* 1.7.5：EARN利用者比率の外側の輪（利用あり）は押せない */
-.donut .used-arc { cursor: default; pointer-events: none; }
+/* 1.7.6：資産シミュレーションの表は金額も中央にそろえる（見出しの真下に）。年間希望報酬の横の2行（年間・1回あたり） */
+table.grid.sim td.n { text-align: center; }
+.yen-unit { display: inline-flex; flex-direction: column; line-height: 1.3; vertical-align: middle; }

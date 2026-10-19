@@ -240,10 +240,14 @@ function renderShare(d, kind) {
   const twoRings = kind === 'rankShare';
   const inRO = twoRings ? RI + (RO - RI) * 2 / 3 : RO; // 内訳の輪の外径
   let a0 = -Math.PI / 2;
+  // 選んだ区分以外を薄くする（「利用あり」を選んだときは、レベルの区分と外側の輪を残す）
+  const isUsed = (key) => twoRings && key !== d.NONE;
+  const lit = (key) => !sel || sel === key || (sel === '__used' && (key === '__used' || isUsed(key)));
   for (const r of d.rows) {
     if (!(r.ratio > 0)) continue;
     const a1 = a0 + r.ratio * Math.PI * 2;
-    const seg = svgEl('path', { d: arc(a0, a1, inRO, RI), fill: r.color, class: 'seg-arc' + (sel && sel !== r.key ? ' dim' : '') + (sel === r.key ? ' on' : ''), 'fill-rule': 'evenodd' });
+    const ro = twoRings && r.key !== d.NONE ? inRO : RO; // 利用無しは輪の全体の太さ
+    const seg = svgEl('path', { d: arc(a0, a1, ro, RI), fill: r.color, class: 'seg-arc' + (lit(r.key) ? '' : ' dim') + (sel === r.key ? ' on' : ''), 'fill-rule': 'evenodd' });
     const tip = svgEl('title', {}); tip.textContent = r.label + '：' + pctText(r.ratio); seg.appendChild(tip);
     seg.addEventListener('click', () => pick(r.key));
     svg.appendChild(seg);
@@ -251,11 +255,12 @@ function renderShare(d, kind) {
   }
   if (twoRings && d.usedRatio > 0) {
     const b0 = -Math.PI / 2;
-    const used = svgEl('path', { d: arc(b0, b0 + d.usedRatio * Math.PI * 2, RO, inRO + 2), fill: SHARE_DARKEST, class: 'seg-arc used-arc' + (sel ? ' dim' : ''), 'fill-rule': 'evenodd' });
+    const used = svgEl('path', { d: arc(b0, b0 + d.usedRatio * Math.PI * 2, RO, inRO + 2), fill: SHARE_DARKEST, class: 'seg-arc used-arc' + (lit('__used') ? '' : ' dim') + (sel === '__used' ? ' on' : ''), 'fill-rule': 'evenodd' });
     const tip = svgEl('title', {}); tip.textContent = '利用あり：' + pctText(d.usedRatio); used.appendChild(tip);
+    used.addEventListener('click', () => pick('__used'));
     svg.appendChild(used);
   }
-  const s = d.rows.find((r) => r.key === sel);
+  const s = sel === '__used' ? { ratio: d.usedRatio, text: '利用あり' } : d.rows.find((r) => r.key === sel);
   const t1 = svgEl('text', { x: C, y: C - 4, class: 'donut-main', 'text-anchor': 'middle' }); t1.textContent = s ? pctText(s.ratio) : d.center;
   const t2 = svgEl('text', { x: C, y: C + 18, class: 'donut-sub', 'text-anchor': 'middle' }); t2.textContent = s ? (s.text || s.label) : d.centerSub;
   svg.append(t1, t2);
@@ -268,13 +273,13 @@ function renderShare(d, kind) {
   const table = el('table', { class: 'grid share-table' },
     el('tr', {}, ...head.map((h, i) => el('th', i ? { class: 'num' } : {}, h))),
     ...rowsForTable.map((r) => {
-      const tr = el('tr', { class: (sel && sel !== r.key && r.key !== '__used' ? 'dim' : '') + (sel === r.key ? ' on' : '') + (r.sub ? ' sub' : '') + (r.head ? ' head' : '') },
+      const tr = el('tr', { class: (lit(r.key) ? '' : 'dim') + (sel === r.key ? ' on' : '') + (r.sub ? ' sub' : '') + (r.head ? ' head' : '') },
         el('td', {}, r.key === '__used' ? el('span', { class: 'swatch', style: 'background:' + SHARE_DARKEST }) : el('span', { class: 'swatch', style: 'background:' + r.color }), r.image ? el('img', { class: 'share-img', src: r.image, alt: '' }) : null, r.label),
         el('td', { class: 'num' }, r.count.toLocaleString('ja-JP')),
         ...(kind === 'fishShare' ? [el('td', { class: 'num' }, fmtInt(r.value))] : []),
         el('td', { class: 'num' }, pctText(r.ratio)),
         ...(kind === 'rankShare' ? [el('td', { class: 'num' }, r.apy)] : []));
-      if (r.key !== '__used') tr.addEventListener('click', () => pick(r.key));
+      tr.addEventListener('click', () => pick(r.key));
       return tr;
     }));
   $('rankShareBox').replaceChildren(el('h2', {}, kind === 'rankShare' ? 'EARN利用者比率' : 'トークン配分内訳'), el('div', { class: 'donut-wrap' }, svg), el('div', { class: 'scroll' }, table));
