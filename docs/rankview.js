@@ -74,18 +74,27 @@ function renderRankingTab(targets) {
   // 分配しているときは、配布先の行を外し、分配後の Manager 分・Agent 分を差し込む（報酬タブと同じ計算）
   const self = split ? (rg.self || '').toLowerCase() : '';
   const s = split ? Reward.settled(split, { old: ranks.old, new: ranks.new }, now) : null;
-  const shares = splitShares(split).map((x) => ({ ...x, reward: x.share * s.factor, total: x.share + x.share * s.factor }));
+  // 配布先アドレスの手元（ウォレットの残高）は Manager 分に入れる（2026-10 ユーザー決定。手元がなければ両方とも 0）
+  const selfRow = v.holders.find((h) => h.address === self);
+  const selfWallet = selfRow ? selfRow.wallet : 0;
+  const shares = splitShares(split).map((x) => {
+    const wallet = x.id === 'manager' ? selfWallet : 0;
+    const reward = x.share * s.factor;
+    return { ...x, wallet, reward, total: wallet + x.share + reward };
+  });
   const ins = (rows, extra) => [...rows.filter((r) => r.address !== self).map((r, i) => ({ ...r, otherNo: i + 1 })), ...shares.map(extra)]
     .sort((a, b) => b.total - a.total).map((r, i) => ({ ...r, no: i + 1 }));
-  const holders = ins(v.holders, (x) => ({ split: x, wallet: 0, principal: x.share, reward: x.reward, total: x.total, share: x.total / v.supply * 100, fish: Fish.classify(x.total, v.supply).name }));
-  const depositors = ins(v.depositors, (x) => ({ split: x, principal: x.share, reward: x.reward, total: x.total, rankName: s.rankNow ? s.rankNow.name : null, rate: s.rateNow }));
+  const holders = ins(v.holders, (x) => ({ split: x, wallet: x.wallet, principal: x.share, reward: x.reward, total: x.total, share: x.total / v.supply * 100, fish: Fish.classify(x.total, v.supply).name }));
+  // 預入ランキングは元本＋報酬（手元は入れない）
+  const depositors = ins(v.depositors, (x) => ({ split: x, principal: x.share, reward: x.reward, total: x.share + x.reward, rankName: s.rankNow ? s.rankNow.name : null, rate: s.rateNow }));
   const others = v.holders.filter((h) => h.address !== self);
 
   // 一番上：保有枚数と推定順位（Manager 分・Agent 分は一覧の中の順位、合算はほかの保有者と比べた順位）
   const multi = APP.id === 'manager';
   $('rankCards').replaceChildren(...(targets.length ? [] : [el('div', { class: 'card' }, el('p', { class: 'muted' }, split ? '表示する対象がありません。「設定」の「保有枚数の表示」で選んでください。' : '「分配」に仕分けた取引がないため、保有枚数はありません。'))]),
     ...targets.map((w) => {
-      const amount = w.share + w.share * s.factor;
+      // 保有枚数：分配＋報酬。Manager 分と合算には配布先の手元も入れる
+      const amount = w.share + w.share * s.factor + (w.id === 'agent' ? 0 : selfWallet);
       const row = holders.find((r) => r.split && r.split.id === w.id);
       const est = row ? row.no : others.filter((h) => h.total > amount).length + 1;
       const of = row ? holders.length : others.length + 1;
@@ -106,7 +115,7 @@ function renderRankingTab(targets) {
   const shown = list.slice(0, rankShown);
   $('rankList').replaceChildren(...shown.map((r) => {
     const sub = rankListKind === 'holders'
-      ? (r.split ? '預入 ' + fmtInt(r.principal) + '・報酬 ' + fmtInt(r.reward) : '手元 ' + fmtInt(r.wallet) + (r.principal > 0 ? '・預入 ' + fmtInt(r.principal) + '・報酬 ' + fmtInt(r.reward) : '')) + '（' + r.share.toFixed(2) + '%）'
+      ? (r.split ? '手元 ' + fmtInt(r.wallet) + '・預入 ' + fmtInt(r.principal) + '・報酬 ' + fmtInt(r.reward) : '手元 ' + fmtInt(r.wallet) + (r.principal > 0 ? '・預入 ' + fmtInt(r.principal) + '・報酬 ' + fmtInt(r.reward) : '')) + '（' + r.share.toFixed(2) + '%）'
       : (r.rankName ? r.rankName + ' ' + pct(r.rate) : 'ランク外') + '・' + '元本 ' + fmtInt(r.principal) + '・報酬 ' + fmtInt(r.reward);
     return el('li', { class: 'rank-row' + (r.split ? ' self' : ''), ...(r.split ? { 'data-split': r.split.id } : {}) },
       el('div', { class: 'rank-line' },
