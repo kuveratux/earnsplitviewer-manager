@@ -3,7 +3,7 @@
 // ランキングタブ（保有者ランキング）。Manager・Agent 共通
 // ・データの ranking.source（保有者ランキング取得エクセルが作った元データ）から、開いた時点の報酬・魚分類で作り直す（report.js）
 //   ランク表は ESV のデータのもの（ranks）を使う（報酬タブと同じ表で計算する）
-// ・一番上：保有枚数（報酬タブと同じ）と推定順位・魚分類。分配で持ち分を分けているので一致するアドレスはなく「推定」
+// ・一番上：保有枚数（報酬タブと同じ）と推定順位・階層（魚分類）。分配で持ち分を分けているので一致するアドレスはなく「推定」
 //     分配しているときは、配布先アドレス（ranking.self）の行を外し、分配後の Manager 分・Agent 分を1行ずつ差し込んで順位を数える
 //     （Agent アプリは Agent 分だけを表示し、Manager 分は表示しないが人数・順位には数える。2026-10 ユーザー決定）
 //     推定順位：Manager 分・Agent 分は差し込んだ一覧の中の順位、合算はほかの保有者と比べた順位
@@ -115,7 +115,7 @@ function renderRankingTab(targets) {
             el('div', { class: 'muted' }, f + '（' + FISH_JA[f] + '）・総供給量の ' + (shownAmount / v.supply * 100).toFixed(3) + '%'))));
     }));
 
-  // ① 保有者ランキング／② 預入ランキング／③ ランク割合／④ 魚分類の割合
+  // ① 保有者ランキング／② 預入ランキング／③ ランク割合／④ 階層（魚分類）の割合
   document.querySelectorAll('#rankSeg button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.list === rankListKind)));
   const isShare = rankListKind === 'rankShare' || rankListKind === 'fishShare';
   $('rankShareBox').hidden = !isShare;
@@ -168,7 +168,7 @@ function jumpToRank(id) {
 document.querySelectorAll('#rankSeg button').forEach((b) => b.addEventListener('click', () => { rankListKind = b.dataset.list; rankShown = RANK_PAGE; refreshAll(); }));
 $('rankMore').addEventListener('click', () => { rankShown += RANK_PAGE; refreshAll(); });
 
-// ---- ③ ランク割合・④ 魚分類の割合（ドーナツと表）
+// ---- ③ ランク割合・④ 階層（魚分類）の割合（ドーナツと表）。Community（運営）の名前・画像・色は設定タブで変えられる（端末の中だけ）
 // 色：順序のある区分なので青1色の濃淡（暗い地では、低い区分ほど地に近い暗い青、高いほど明るい青）。運営（Community）・ランク外は灰色
 // （dataviz の検証：#184f95,#256abf,#3987e5,#6da7ec,#9ec5f4,#cde2fb を --ordinal --mode dark --surface #0c1428 で合格。灰色 #6b7488 は地に 3.9:1）
 const SHARE_RAMP = ['#184f95', '#256abf', '#3987e5', '#6da7ec', '#9ec5f4', '#cde2fb'];
@@ -199,7 +199,9 @@ function fishShareOf(holders, v) {
     unit: data.token.symbol, total, center: rows.reduce((t, r) => t + r.count, 0).toLocaleString('ja-JP') + '件', centerSub: '保有者（運営を含む）',
     rows: rows.map((r) => {
       const ci = Fish.CLASSES.findIndex((c) => c.name === r.name);
-      return { key: r.name, label: (FISH_EMOJI[r.name] ? FISH_EMOJI[r.name] + ' ' : '') + r.name + '（' + (ci >= 0 ? Fish.CLASSES[ci].ja : '運営') + '）', color: ci >= 0 ? colors[ci] : SHARE_GRAY, count: r.count, value: r.amount, ratio: total ? r.amount / total : 0 };
+      const com = ci < 0;
+      const text = com ? comName() : r.name + '（' + Fish.CLASSES[ci].ja + '）';
+      return { key: r.name, text, label: (FISH_EMOJI[r.name] ? FISH_EMOJI[r.name] + ' ' : '') + text, image: com ? communityStyle.image : '', color: com ? comColor() : colors[ci], count: r.count, value: r.amount, ratio: total ? r.amount / total : 0 };
     }),
   };
 }
@@ -234,22 +236,52 @@ function renderShare(d, kind) {
   }
   const s = d.rows.find((r) => r.key === sel);
   const t1 = svgEl('text', { x: C, y: C - 4, class: 'donut-main', 'text-anchor': 'middle' }); t1.textContent = s ? pctText(s.ratio) : d.center;
-  const t2 = svgEl('text', { x: C, y: C + 18, class: 'donut-sub', 'text-anchor': 'middle' }); t2.textContent = s ? s.label.replace(/^\S+ (?=[A-Z])/u, '') : d.centerSub;
+  const t2 = svgEl('text', { x: C, y: C + 18, class: 'donut-sub', 'text-anchor': 'middle' }); t2.textContent = s ? (s.text || s.label) : d.centerSub;
   svg.append(t1, t2);
 
   // 表（凡例を兼ねる。押すと選ぶ）
-  const head = kind === 'rankShare' ? ['ランク', '人数', '割合'] : ['分類', '件数', '枚数', '割合'];
+  const head = kind === 'rankShare' ? ['ランク', '人数', '割合'] : ['階層', '件数', '枚数', '割合'];
   const table = el('table', { class: 'grid share-table' },
     el('tr', {}, ...head.map((h, i) => el('th', i ? { class: 'num' } : {}, h))),
     ...d.rows.map((r) => {
       const tr = el('tr', { class: (sel && sel !== r.key ? 'dim' : '') + (sel === r.key ? ' on' : '') },
-        el('td', {}, el('span', { class: 'swatch', style: 'background:' + r.color }), r.label),
+        el('td', {}, el('span', { class: 'swatch', style: 'background:' + r.color }), r.image ? el('img', { class: 'share-img', src: r.image, alt: '' }) : null, r.label),
         el('td', { class: 'num' }, r.count.toLocaleString('ja-JP')),
         ...(kind === 'fishShare' ? [el('td', { class: 'num' }, fmtInt(r.value))] : []),
         el('td', { class: 'num' }, pctText(r.ratio)));
       tr.addEventListener('click', () => pick(r.key));
       return tr;
     }));
-  const note = kind === 'rankShare' ? '預けている人のランク別の人数です。' : '手元＋預入（元本）の枚数で分けています（報酬は入れていません）。運営のアドレスは Community にまとめています。';
-  $('rankShareBox').replaceChildren(el('h2', {}, kind === 'rankShare' ? 'ランク割合（人数）' : '魚分類の割合（枚数）'), el('div', { class: 'donut-wrap' }, svg), el('div', { class: 'scroll' }, table), el('p', { class: 'muted' }, note));
+  const note = kind === 'rankShare' ? '預けている人のランク別の人数です。' : '手元＋預入（元本）の枚数で分けています（報酬は入れていません）。運営のアドレスは ' + comName() + ' にまとめています。';
+  $('rankShareBox').replaceChildren(el('h2', {}, kind === 'rankShare' ? 'ランク割合（人数）' : '階層の割合（枚数）'), el('div', { class: 'donut-wrap' }, svg), el('div', { class: 'scroll' }, table), el('p', { class: 'muted' }, note));
 }
+
+// ---- Community（運営）の表示：名前・画像・色（設定タブ。端末の中だけに保存 'communityStyle'）
+let communityStyle = { name: '', image: '', color: '' };
+const comName = () => (communityStyle.name || '').trim() || 'Community';
+const comColor = () => (/^#[0-9a-f]{6}$/i.test(communityStyle.color || '') ? communityStyle.color : SHARE_GRAY);
+async function saveCommunity() { await putSetting('communityStyle', communityStyle); refreshAll(); }
+function renderCommunitySettings() {
+  if (!$('comName')) return;
+  if (document.activeElement !== $('comName')) $('comName').value = communityStyle.name || '';
+  $('comColor').value = comColor();
+  $('comImgPrev').replaceChildren(communityStyle.image ? el('img', { src: communityStyle.image, alt: '' }) : el('span', { class: 'muted' }, 'なし'));
+  $('comImgBtn').textContent = communityStyle.image ? '選び直す' : '画像を選ぶ';
+  $('comImgDel').hidden = !communityStyle.image;
+}
+$('comName').addEventListener('change', () => { communityStyle.name = $('comName').value.trim(); saveCommunity(); });
+$('comColor').addEventListener('change', () => { communityStyle.color = $('comColor').value; saveCommunity(); });
+$('comColorReset').addEventListener('click', () => { communityStyle.color = ''; saveCommunity(); });
+$('comImgBtn').addEventListener('click', () => { $('comImgFile').value = ''; $('comImgFile').click(); });
+$('comImgDel').addEventListener('click', () => { communityStyle.image = ''; saveCommunity(); });
+$('comImgFile').addEventListener('change', async () => {
+  const f = $('comImgFile').files[0];
+  if (!f) return;
+  try { communityStyle.image = await shrinkImage(f); await saveCommunity(); }
+  catch (e) { alert('この画像は読み込めませんでした（' + (e && e.message ? e.message : '形式が違います') + '）。JPEG や PNG の画像を選んでください。'); }
+});
+ESV.renderers.push(renderCommunitySettings);
+ESV.loaders.push(async () => {
+  const v = await getSetting('communityStyle');
+  communityStyle = Object.assign({ name: '', image: '', color: '' }, v && typeof v === 'object' ? v : {});
+});
