@@ -3,7 +3,7 @@
 // ランキングタブ（保有者ランキング）。Manager・Agent 共通
 // ・データの ranking.source（保有者ランキング取得エクセルが作った元データ）から、開いた時点の報酬・魚分類で作り直す（report.js）
 //   ランク表は ESV のデータのもの（ranks）を使う（報酬タブと同じ表で計算する）
-// ・一番上：保有枚数（報酬タブと同じ）と推定順位・階層（魚分類）。分配で持ち分を分けているので一致するアドレスはなく「推定」
+// ・一番上：保有枚数（報酬タブと同じ）と推定順位・Tier（魚分類）。分配で持ち分を分けているので一致するアドレスはなく「推定」
 //     分配しているときは、配布先アドレス（ranking.self）の行を外し、分配後の Manager 分・Agent 分を1行ずつ差し込んで順位を数える
 //     （Agent アプリは Agent 分だけを表示し、Manager 分は表示しないが人数・順位には数える。2026-10 ユーザー決定）
 //     推定順位：Manager 分・Agent 分は差し込んだ一覧の中の順位、合算はほかの保有者と比べた順位
@@ -115,7 +115,7 @@ function renderRankingTab(targets) {
             el('div', { class: 'muted' }, f + '（' + FISH_JA[f] + '）・総供給量の ' + (shownAmount / v.supply * 100).toFixed(3) + '%'))));
     }));
 
-  // ① 保有者ランキング／② 預入ランキング／③ ランク割合／④ 階層（魚分類）の割合
+  // ① 保有者ランキング／② 預入ランキング／③ EARN（ランク＝レベル別の人数）／④ Tier（魚分類）の割合
   document.querySelectorAll('#rankSeg button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.list === rankListKind)));
   const isShare = rankListKind === 'rankShare' || rankListKind === 'fishShare';
   $('rankShareBox').hidden = !isShare;
@@ -168,7 +168,7 @@ function jumpToRank(id) {
 document.querySelectorAll('#rankSeg button').forEach((b) => b.addEventListener('click', () => { rankListKind = b.dataset.list; rankShown = RANK_PAGE; refreshAll(); }));
 $('rankMore').addEventListener('click', () => { rankShown += RANK_PAGE; refreshAll(); });
 
-// ---- ③ ランク割合・④ 階層（魚分類）の割合（ドーナツと表）。Community（運営）の名前・画像・色は設定タブで変えられる（端末の中だけ）
+// ---- ③ EARN（レベル別の人数・APY）・④ Tier（魚分類）の割合（ドーナツと表）。Community（運営）の名前・画像・色は設定タブで変えられる（端末の中だけ）
 // 色：順序のある区分なので青1色の濃淡（暗い地では、低い区分ほど地に近い暗い青、高いほど明るい青）。運営（Community）・ランク外は灰色
 // （dataviz の検証：#184f95,#256abf,#3987e5,#6da7ec,#9ec5f4,#cde2fb を --ordinal --mode dark --surface #0c1428 で合格。灰色 #6b7488 は地に 3.9:1）
 const SHARE_RAMP = ['#184f95', '#256abf', '#3987e5', '#6da7ec', '#9ec5f4', '#cde2fb'];
@@ -176,13 +176,16 @@ const SHARE_GRAY = '#6b7488';
 const rampFor = (n) => Array.from({ length: n }, (_, i) => SHARE_RAMP[n === 1 ? SHARE_RAMP.length - 1 : Math.round(i * (SHARE_RAMP.length - 1) / (n - 1))]); // 低い→高い
 let shareSel = { rankShare: null, fishShare: null }; // 押して選んだ区分
 
-// ③：預けている人のランク別の人数（一覧と同じく、分配の行は Manager 分・Agent 分として数える）。上位のランクから
+// ③ EARN：預けている人のランク（画面では「レベル」）別の人数（一覧と同じく、分配の行は Manager 分・Agent 分として数える）。上位のレベルから
+// APY：今日の時点で使うランク表（新ランク表の開始日より前なら旧、以降なら新）の、そのレベルの年利
 function rankShareOf(depositors) {
   const names = [];
   for (const r of [...ranks.new.ranks, ...ranks.old.ranks].reverse()) if (!names.includes(r.name)) names.push(r.name); // 上位から
-  const OUT = 'ランク外';
+  const OUT = 'レベル外';
   const colors = rampFor(names.length).reverse();
-  const rows = [...names, OUT].map((name, i) => ({ key: name, label: name, color: name === OUT ? SHARE_GRAY : colors[i], count: depositors.filter((p) => (p.rankName || OUT) === name).length }));
+  const nowTable = Date.now() / 1000 >= Date.parse(ranks.new.startDate + 'T00:00:00+09:00') / 1000 ? ranks.new.ranks : ranks.old.ranks;
+  const apyOf = (name) => { const r = nowTable.find((x) => x.name === name); return r ? pct(r.rate) : '—'; };
+  const rows = [...names, OUT].map((name, i) => ({ key: name, label: name, color: name === OUT ? SHARE_GRAY : colors[i], apy: name === OUT ? '—' : apyOf(name), count: depositors.filter((p) => (p.rankName || OUT) === name).length }));
   const total = rows.reduce((t, r) => t + r.count, 0);
   return { unit: '人', total, center: total.toLocaleString('ja-JP') + '人', centerSub: '預けている人', rows: rows.filter((r) => r.count > 0 || r.key !== OUT).map((r) => ({ ...r, value: r.count, ratio: total ? r.count / total : 0 })) };
 }
@@ -214,7 +217,7 @@ function renderShare(d, kind) {
   const pick = (key) => { shareSel[kind] = shareSel[kind] === key ? null : key; refreshAll(); };
   // ドーナツ（上から時計回り。区分の間に地の色のすき間）
   const S = 220, C = S / 2, RO = 100, RI = 62;
-  const svg = svgEl('svg', { viewBox: `0 0 ${S} ${S}`, class: 'donut', role: 'img', 'aria-label': kind === 'rankShare' ? 'ランク割合' : '魚分類の割合' });
+  const svg = svgEl('svg', { viewBox: `0 0 ${S} ${S}`, class: 'donut', role: 'img', 'aria-label': kind === 'rankShare' ? 'EARN の割合' : 'Tier の割合' });
   let a0 = -Math.PI / 2;
   const pt = (r, a) => [C + r * Math.cos(a), C + r * Math.sin(a)];
   for (const r of d.rows) {
@@ -240,7 +243,7 @@ function renderShare(d, kind) {
   svg.append(t1, t2);
 
   // 表（凡例を兼ねる。押すと選ぶ）
-  const head = kind === 'rankShare' ? ['ランク', '人数', '割合'] : ['階層', '件数', '枚数', '割合'];
+  const head = kind === 'rankShare' ? ['レベル', '人数', '割合', 'APY'] : ['Tier', '件数', '枚数', '割合'];
   const table = el('table', { class: 'grid share-table' },
     el('tr', {}, ...head.map((h, i) => el('th', i ? { class: 'num' } : {}, h))),
     ...d.rows.map((r) => {
@@ -248,12 +251,13 @@ function renderShare(d, kind) {
         el('td', {}, el('span', { class: 'swatch', style: 'background:' + r.color }), r.image ? el('img', { class: 'share-img', src: r.image, alt: '' }) : null, r.label),
         el('td', { class: 'num' }, r.count.toLocaleString('ja-JP')),
         ...(kind === 'fishShare' ? [el('td', { class: 'num' }, fmtInt(r.value))] : []),
-        el('td', { class: 'num' }, pctText(r.ratio)));
+        el('td', { class: 'num' }, pctText(r.ratio)),
+        ...(kind === 'rankShare' ? [el('td', { class: 'num' }, r.apy)] : []));
       tr.addEventListener('click', () => pick(r.key));
       return tr;
     }));
-  const note = kind === 'rankShare' ? '預けている人のランク別の人数です。' : '手元＋預入（元本）の枚数で分けています（報酬は入れていません）。運営のアドレスは ' + comName() + ' にまとめています。';
-  $('rankShareBox').replaceChildren(el('h2', {}, kind === 'rankShare' ? 'ランク割合（人数）' : '階層の割合（枚数）'), el('div', { class: 'donut-wrap' }, svg), el('div', { class: 'scroll' }, table), el('p', { class: 'muted' }, note));
+  const note = kind === 'rankShare' ? '預けている人のレベル別の人数です。APY は今のレベルの年利です。' : '手元＋預入（元本）の枚数で分けています（報酬は入れていません）。運営のアドレスは ' + comName() + ' にまとめています。';
+  $('rankShareBox').replaceChildren(el('h2', {}, kind === 'rankShare' ? 'EARN の割合（人数）' : 'Tier の割合（枚数）'), el('div', { class: 'donut-wrap' }, svg), el('div', { class: 'scroll' }, table), el('p', { class: 'muted' }, note));
 }
 
 // ---- Community（運営）の表示：名前・画像・色（設定タブ。端末の中だけに保存 'communityStyle'）
