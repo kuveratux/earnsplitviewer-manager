@@ -391,9 +391,9 @@ main { overflow-x: clip; }
 .share-table tr.head + tr.sub td, .share-table tr.sub td { font-size: 13px; }
 .swatch.none { background: transparent; }
 /* 1.7.1：EARN利用者比率の「利用あり」を赤で示す（ドーナツの範囲を囲む線、表の■） */
-.donut .used-ring { fill: none; stroke: #ff5a5a; stroke-width: 3px; stroke-linejoin: round; pointer-events: none; }
-.swatch.used { background: #ff5a5a; }
 /* 1.7.2：年間希望報酬の横の ○○万円・○.○億円 */
 .yen-unit { margin-left: 8px; color: var(--muted); font-size: 13px; white-space: nowrap; }
 /* 1.7.3：表のタイトル行（1行目の見出し）は中央そろえ（行の左端の見出しはそのまま） */
 table.grid tr:first-child > th { text-align: center !important; }
+/* 1.7.5：EARN利用者比率の外側の輪（利用あり）は押せない */
+.donut .used-arc { cursor: default; pointer-events: none; }

@@ -170,8 +170,10 @@ $('rankMore').addEventListener('click', () => { rankShown += RANK_PAGE; refreshA
 
 // ---- ③ EARN（レベル別の人数・APY）・④ Tier（魚分類）の割合（ドーナツと表）。Community（運営）の名前・画像・色は設定タブで変えられる（端末の中だけ）
 // 色：順序のある区分なので青1色の濃淡（暗い地では、低い区分ほど地に近い暗い青、高いほど明るい青）。運営（Community）・ランク外は灰色
-// （dataviz の検証：#184f95,#256abf,#3987e5,#6da7ec,#9ec5f4,#cde2fb を --ordinal --mode dark --surface #0c1428 で合格。灰色 #6b7488 は地に 3.9:1）
-const SHARE_RAMP = ['#184f95', '#256abf', '#3987e5', '#6da7ec', '#9ec5f4', '#cde2fb'];
+// （dataviz の検証：#184f95,#256abf,#3987e5,#6da7ec,#9ec5f4,#cde2fb,#eef5fe の7段を --ordinal --mode dark --surface #0c1428 で合格。
+//   いちばん濃い #184f95 は運営（Community）の標準の色と EARN の「利用あり」専用。区分（Tier・レベル）は残りの6段。#184f95 より濃い青は地に溶けて検証に通らない（2026-10）。灰色 #6b7488 は地に 3.9:1）
+const SHARE_DARKEST = '#184f95';
+const SHARE_RAMP = ['#256abf', '#3987e5', '#6da7ec', '#9ec5f4', '#cde2fb', '#eef5fe'];
 const SHARE_GRAY = '#6b7488';
 const SHARE_GRAY_DARK = '#454e60'; // EARN の「預入なし」（地に 2.19:1。レベル外の灰色より暗い）
 const rampFor = (n) => Array.from({ length: n }, (_, i) => SHARE_RAMP[n === 1 ? SHARE_RAMP.length - 1 : Math.round(i * (SHARE_RAMP.length - 1) / (n - 1))]); // 低い→高い
@@ -225,38 +227,33 @@ function renderShare(d, kind) {
   const sel = shareSel[kind];
   const pick = (key) => { shareSel[kind] = shareSel[kind] === key ? null : key; refreshAll(); };
   // ドーナツ（上から時計回り。区分の間に地の色のすき間）
+  // EARN利用者比率：輪の外側 1/3 に利用ありの範囲（いちばん濃い色）、内側 2/3 に内訳（レベル・利用無し）
   const S = 220, C = S / 2, RO = 100, RI = 62;
   const svg = svgEl('svg', { viewBox: `0 0 ${S} ${S}`, class: 'donut', role: 'img', 'aria-label': kind === 'rankShare' ? 'EARN利用者比率' : 'トークン配分内訳' });
-  let a0 = -Math.PI / 2;
   const pt = (r, a) => [C + r * Math.cos(a), C + r * Math.sin(a)];
+  const arc = (a0, a1, ro, ri) => {
+    if (a1 - a0 >= Math.PI * 2 - 1e-4) return `M ${C} ${C - ro} A ${ro} ${ro} 0 1 1 ${C - 0.01} ${C - ro} Z M ${C} ${C - ri} A ${ri} ${ri} 0 1 0 ${C - 0.01} ${C - ri} Z`;
+    const big = a1 - a0 > Math.PI ? 1 : 0;
+    const [x0, y0] = pt(ro, a0), [x1, y1] = pt(ro, a1), [x2, y2] = pt(ri, a1), [x3, y3] = pt(ri, a0);
+    return `M ${x0} ${y0} A ${ro} ${ro} 0 ${big} 1 ${x1} ${y1} L ${x2} ${y2} A ${ri} ${ri} 0 ${big} 0 ${x3} ${y3} Z`;
+  };
+  const twoRings = kind === 'rankShare';
+  const inRO = twoRings ? RI + (RO - RI) * 2 / 3 : RO; // 内訳の輪の外径
+  let a0 = -Math.PI / 2;
   for (const r of d.rows) {
     if (!(r.ratio > 0)) continue;
     const a1 = a0 + r.ratio * Math.PI * 2;
-    let path;
-    if (r.ratio >= 0.9999) {
-      path = `M ${C} ${C - RO} A ${RO} ${RO} 0 1 1 ${C - 0.01} ${C - RO} Z M ${C} ${C - RI} A ${RI} ${RI} 0 1 0 ${C - 0.01} ${C - RI} Z`;
-    } else {
-      const big = a1 - a0 > Math.PI ? 1 : 0;
-      const [x0, y0] = pt(RO, a0), [x1, y1] = pt(RO, a1), [x2, y2] = pt(RI, a1), [x3, y3] = pt(RI, a0);
-      path = `M ${x0} ${y0} A ${RO} ${RO} 0 ${big} 1 ${x1} ${y1} L ${x2} ${y2} A ${RI} ${RI} 0 ${big} 0 ${x3} ${y3} Z`;
-    }
-    const seg = svgEl('path', { d: path, fill: r.color, class: 'seg-arc' + (sel && sel !== r.key ? ' dim' : '') + (sel === r.key ? ' on' : ''), 'fill-rule': 'evenodd' });
+    const seg = svgEl('path', { d: arc(a0, a1, inRO, RI), fill: r.color, class: 'seg-arc' + (sel && sel !== r.key ? ' dim' : '') + (sel === r.key ? ' on' : ''), 'fill-rule': 'evenodd' });
     const tip = svgEl('title', {}); tip.textContent = r.label + '：' + pctText(r.ratio); seg.appendChild(tip);
     seg.addEventListener('click', () => pick(r.key));
     svg.appendChild(seg);
     a0 = a1;
   }
-  // EARN利用者比率：利用あり（レベルの区分をまとめた範囲。上から時計回りに先に描いている）を赤い線で囲む
-  if (kind === 'rankShare' && d.usedRatio > 0) {
-    let path;
-    if (d.usedRatio >= 0.9999) {
-      path = `M ${C} ${C - RO} A ${RO} ${RO} 0 1 1 ${C - 0.01} ${C - RO} Z M ${C} ${C - RI} A ${RI} ${RI} 0 1 0 ${C - 0.01} ${C - RI} Z`;
-    } else {
-      const b0 = -Math.PI / 2, b1 = b0 + d.usedRatio * Math.PI * 2, big = d.usedRatio > 0.5 ? 1 : 0;
-      const [x0, y0] = pt(RO, b0), [x1, y1] = pt(RO, b1), [x2, y2] = pt(RI, b1), [x3, y3] = pt(RI, b0);
-      path = `M ${x0} ${y0} A ${RO} ${RO} 0 ${big} 1 ${x1} ${y1} L ${x2} ${y2} A ${RI} ${RI} 0 ${big} 0 ${x3} ${y3} Z`;
-    }
-    svg.appendChild(svgEl('path', { d: path, class: 'used-ring' }));
+  if (twoRings && d.usedRatio > 0) {
+    const b0 = -Math.PI / 2;
+    const used = svgEl('path', { d: arc(b0, b0 + d.usedRatio * Math.PI * 2, RO, inRO + 2), fill: SHARE_DARKEST, class: 'seg-arc used-arc' + (sel ? ' dim' : ''), 'fill-rule': 'evenodd' });
+    const tip = svgEl('title', {}); tip.textContent = '利用あり：' + pctText(d.usedRatio); used.appendChild(tip);
+    svg.appendChild(used);
   }
   const s = d.rows.find((r) => r.key === sel);
   const t1 = svgEl('text', { x: C, y: C - 4, class: 'donut-main', 'text-anchor': 'middle' }); t1.textContent = s ? pctText(s.ratio) : d.center;
@@ -272,7 +269,7 @@ function renderShare(d, kind) {
     el('tr', {}, ...head.map((h, i) => el('th', i ? { class: 'num' } : {}, h))),
     ...rowsForTable.map((r) => {
       const tr = el('tr', { class: (sel && sel !== r.key && r.key !== '__used' ? 'dim' : '') + (sel === r.key ? ' on' : '') + (r.sub ? ' sub' : '') + (r.head ? ' head' : '') },
-        el('td', {}, r.key === '__used' ? el('span', { class: 'swatch used' }) : el('span', { class: 'swatch', style: 'background:' + r.color }), r.image ? el('img', { class: 'share-img', src: r.image, alt: '' }) : null, r.label),
+        el('td', {}, r.key === '__used' ? el('span', { class: 'swatch', style: 'background:' + SHARE_DARKEST }) : el('span', { class: 'swatch', style: 'background:' + r.color }), r.image ? el('img', { class: 'share-img', src: r.image, alt: '' }) : null, r.label),
         el('td', { class: 'num' }, r.count.toLocaleString('ja-JP')),
         ...(kind === 'fishShare' ? [el('td', { class: 'num' }, fmtInt(r.value))] : []),
         el('td', { class: 'num' }, pctText(r.ratio)),
@@ -286,7 +283,7 @@ function renderShare(d, kind) {
 // ---- Community（運営）の表示：名前・画像・色（設定タブ。端末の中だけに保存 'communityStyle'）
 let communityStyle = { name: '', image: '', color: '' };
 const comName = () => (communityStyle.name || '').trim() || 'Community';
-const comColor = () => (/^#[0-9a-f]{6}$/i.test(communityStyle.color || '') ? communityStyle.color : SHARE_GRAY);
+const comColor = () => (/^#[0-9a-f]{6}$/i.test(communityStyle.color || '') ? communityStyle.color : SHARE_DARKEST); // 標準はいちばん濃い色
 async function saveCommunity() { await putSetting('communityStyle', communityStyle); refreshAll(); }
 function renderCommunitySettings() {
   if (!$('comName')) return;
