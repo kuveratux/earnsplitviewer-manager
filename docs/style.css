@@ -395,3 +395,5 @@ main { overflow-x: clip; }
 .swatch.used { background: #ff5a5a; }
 /* 1.7.2：年間希望報酬の横の ○○万円・○.○億円 */
 .yen-unit { margin-left: 8px; color: var(--muted); font-size: 13px; white-space: nowrap; }
+/* 1.7.3：表のタイトル行（1行目の見出し）は中央そろえ（行の左端の見出しはそのまま） */
+table.grid tr:first-child > th { text-align: center !important; }

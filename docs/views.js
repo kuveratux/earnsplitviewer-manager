@@ -338,9 +338,10 @@ document.querySelectorAll('#yearsSeg button').forEach((b) => b.addEventListener(
 const numIn = (id) => { const v = Number($(id).value); return Number.isFinite(v) && v > 0 ? v : 0; };
 $('wdPrice').addEventListener('change', async () => { wdPrice = numIn('wdPrice'); if (wdPrice && data && wdPrice === Number(data.price)) wdPrice = 0; await putSetting('wdPrice', wdPrice); refreshAll(); });
 $('wdYen').addEventListener('change', async () => { wdYen = numIn('wdYen'); await putSetting('wdYen', wdYen); refreshAll(); });
-// 年間希望報酬の横の読みやすい表示：1億円未満は「○○万円」（小数1桁まで）、1億円以上は「○.○億円」
+// 年間希望報酬の横の読みやすい表示：1万円未満は円のまま、1億円未満は「○○万円」（小数1桁まで）、1億円以上は「○.○億円」
 function yenUnitText(v) {
   if (!(v > 0)) return '';
+  if (v < 1e4) return Math.floor(v).toLocaleString('ja-JP') + '円';
   if (v >= 1e8) return (Math.floor(v / 1e7) / 10).toFixed(1) + '億円';
   return (Math.round(v / 1e3) / 10).toLocaleString('ja-JP', { maximumFractionDigits: 1 }) + '万円';
 }
