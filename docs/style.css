@@ -351,3 +351,19 @@ main { overflow-x: clip; }
 .rank-est-no.jump b { text-decoration: underline; text-decoration-color: rgba(156, 196, 255, .6); text-underline-offset: 4px; }
 @keyframes rk-flash { 0%, 60% { box-shadow: 0 0 0 3px #fff, 0 0 24px rgba(120, 170, 255, .9); } 100% { box-shadow: 0 0 14px rgba(70, 130, 255, .45); } }
 .ranklist li.rank-row.self.flash { animation: rk-flash 1.4s ease-out; }
+/* 1.5：③ランク割合・④魚分類の割合（ドーナツと表） */
+.rank-seg button { padding-left: 2px; padding-right: 2px; font-size: 13px; }
+.share-box h2 { margin-bottom: 8px; }
+.donut-wrap { display: flex; justify-content: center; margin: 4px 0 10px; }
+.donut { width: 220px; height: 220px; }
+.donut .seg-arc { stroke: var(--card); stroke-width: 2px; cursor: pointer; transition: opacity .15s; }
+.donut .seg-arc.dim { opacity: .3; }
+.donut .seg-arc.on { stroke: #fff; }
+.donut-main { fill: var(--text); font-size: 22px; font-weight: 700; }
+.donut-sub { fill: var(--muted); font-size: 11px; }
+.share-table td, .share-table th { white-space: nowrap; }
+.share-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+.share-table tr { cursor: pointer; }
+.share-table tr.dim td { opacity: .4; }
+.share-table tr.on td { background: rgba(63, 124, 245, .15); }
+.swatch { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }

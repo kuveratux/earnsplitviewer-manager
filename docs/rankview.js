@@ -115,8 +115,16 @@ function renderRankingTab(targets) {
             el('div', { class: 'muted' }, f + '（' + FISH_JA[f] + '）・総供給量の ' + (shownAmount / v.supply * 100).toFixed(3) + '%'))));
     }));
 
-  // ① 保有者ランキング／② 預入ランキング
+  // ① 保有者ランキング／② 預入ランキング／③ ランク割合／④ 魚分類の割合
   document.querySelectorAll('#rankSeg button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.list === rankListKind)));
+  const isShare = rankListKind === 'rankShare' || rankListKind === 'fishShare';
+  $('rankShareBox').hidden = !isShare;
+  $('rankList').hidden = isShare;
+  if (isShare) {
+    $('rankMore').hidden = true;
+    renderShare(rankListKind === 'rankShare' ? rankShareOf(depositors) : fishShareOf(holders, v), rankListKind);
+    return;
+  }
   const list = (rankListKind === 'holders' ? holders : depositors).filter((r) => !r.split || r.split.show);
   const shown = list.slice(0, rankShown);
   $('rankList').replaceChildren(...shown.map((r) => {
@@ -159,3 +167,89 @@ function jumpToRank(id) {
 
 document.querySelectorAll('#rankSeg button').forEach((b) => b.addEventListener('click', () => { rankListKind = b.dataset.list; rankShown = RANK_PAGE; refreshAll(); }));
 $('rankMore').addEventListener('click', () => { rankShown += RANK_PAGE; refreshAll(); });
+
+// ---- ③ ランク割合・④ 魚分類の割合（ドーナツと表）
+// 色：順序のある区分なので青1色の濃淡（暗い地では、低い区分ほど地に近い暗い青、高いほど明るい青）。運営（Community）・ランク外は灰色
+// （dataviz の検証：#184f95,#256abf,#3987e5,#6da7ec,#9ec5f4,#cde2fb を --ordinal --mode dark --surface #0c1428 で合格。灰色 #6b7488 は地に 3.9:1）
+const SHARE_RAMP = ['#184f95', '#256abf', '#3987e5', '#6da7ec', '#9ec5f4', '#cde2fb'];
+const SHARE_GRAY = '#6b7488';
+const rampFor = (n) => Array.from({ length: n }, (_, i) => SHARE_RAMP[n === 1 ? SHARE_RAMP.length - 1 : Math.round(i * (SHARE_RAMP.length - 1) / (n - 1))]); // 低い→高い
+let shareSel = { rankShare: null, fishShare: null }; // 押して選んだ区分
+
+// ③：預けている人のランク別の人数（一覧と同じく、分配の行は Manager 分・Agent 分として数える）。上位のランクから
+function rankShareOf(depositors) {
+  const names = [];
+  for (const r of [...ranks.new.ranks, ...ranks.old.ranks].reverse()) if (!names.includes(r.name)) names.push(r.name); // 上位から
+  const OUT = 'ランク外';
+  const colors = rampFor(names.length).reverse();
+  const rows = [...names, OUT].map((name, i) => ({ key: name, label: name, color: name === OUT ? SHARE_GRAY : colors[i], count: depositors.filter((p) => (p.rankName || OUT) === name).length }));
+  const total = rows.reduce((t, r) => t + r.count, 0);
+  return { unit: '人', total, center: total.toLocaleString('ja-JP') + '人', centerSub: '預けている人', rows: rows.filter((r) => r.count > 0 || r.key !== OUT).map((r) => ({ ...r, value: r.count, ratio: total ? r.count / total : 0 })) };
+}
+
+// ④：手元＋元本（報酬は入れない）の分類別の枚数。運営は Community。分配の行は Manager 分・Agent 分として数える
+function fishShareOf(holders, v) {
+  const items = holders.map((h) => ({ amount: h.wallet + h.principal, community: false }));
+  const base = Fish.share(items, v.supply);
+  const com = v.fishShare.find((x) => x.name === Fish.COMMUNITY.name);
+  const rows = base.map((x) => (x.name === Fish.COMMUNITY.name ? { ...x, count: com.count, amount: com.amount } : x));
+  const total = rows.reduce((t, r) => t + r.amount, 0);
+  const colors = rampFor(Fish.CLASSES.length).reverse(); // Whale が明るい
+  return {
+    unit: data.token.symbol, total, center: rows.reduce((t, r) => t + r.count, 0).toLocaleString('ja-JP') + '件', centerSub: '保有者（運営を含む）',
+    rows: rows.map((r) => {
+      const ci = Fish.CLASSES.findIndex((c) => c.name === r.name);
+      return { key: r.name, label: (FISH_EMOJI[r.name] ? FISH_EMOJI[r.name] + ' ' : '') + r.name + '（' + (ci >= 0 ? Fish.CLASSES[ci].ja : '運営') + '）', color: ci >= 0 ? colors[ci] : SHARE_GRAY, count: r.count, value: r.amount, ratio: total ? r.amount / total : 0 };
+    }),
+  };
+}
+
+const svgEl = (tag, attrs) => { const e = document.createElementNS('http://www.w3.org/2000/svg', tag); for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v); return e; };
+const pctText = (r) => (r * 100 >= 10 ? (r * 100).toFixed(1) : (r * 100).toFixed(2)) + '%';
+
+function renderShare(d, kind) {
+  const sel = shareSel[kind];
+  const pick = (key) => { shareSel[kind] = shareSel[kind] === key ? null : key; refreshAll(); };
+  // ドーナツ（上から時計回り。区分の間に地の色のすき間）
+  const S = 220, C = S / 2, RO = 100, RI = 62;
+  const svg = svgEl('svg', { viewBox: `0 0 ${S} ${S}`, class: 'donut', role: 'img', 'aria-label': kind === 'rankShare' ? 'ランク割合' : '魚分類の割合' });
+  let a0 = -Math.PI / 2;
+  const pt = (r, a) => [C + r * Math.cos(a), C + r * Math.sin(a)];
+  for (const r of d.rows) {
+    if (!(r.ratio > 0)) continue;
+    const a1 = a0 + r.ratio * Math.PI * 2;
+    let path;
+    if (r.ratio >= 0.9999) {
+      path = `M ${C} ${C - RO} A ${RO} ${RO} 0 1 1 ${C - 0.01} ${C - RO} Z M ${C} ${C - RI} A ${RI} ${RI} 0 1 0 ${C - 0.01} ${C - RI} Z`;
+    } else {
+      const big = a1 - a0 > Math.PI ? 1 : 0;
+      const [x0, y0] = pt(RO, a0), [x1, y1] = pt(RO, a1), [x2, y2] = pt(RI, a1), [x3, y3] = pt(RI, a0);
+      path = `M ${x0} ${y0} A ${RO} ${RO} 0 ${big} 1 ${x1} ${y1} L ${x2} ${y2} A ${RI} ${RI} 0 ${big} 0 ${x3} ${y3} Z`;
+    }
+    const seg = svgEl('path', { d: path, fill: r.color, class: 'seg-arc' + (sel && sel !== r.key ? ' dim' : '') + (sel === r.key ? ' on' : ''), 'fill-rule': 'evenodd' });
+    const tip = svgEl('title', {}); tip.textContent = r.label + '：' + pctText(r.ratio); seg.appendChild(tip);
+    seg.addEventListener('click', () => pick(r.key));
+    svg.appendChild(seg);
+    a0 = a1;
+  }
+  const s = d.rows.find((r) => r.key === sel);
+  const t1 = svgEl('text', { x: C, y: C - 4, class: 'donut-main', 'text-anchor': 'middle' }); t1.textContent = s ? pctText(s.ratio) : d.center;
+  const t2 = svgEl('text', { x: C, y: C + 18, class: 'donut-sub', 'text-anchor': 'middle' }); t2.textContent = s ? s.label.replace(/^\S+ (?=[A-Z])/u, '') : d.centerSub;
+  svg.append(t1, t2);
+
+  // 表（凡例を兼ねる。押すと選ぶ）
+  const head = kind === 'rankShare' ? ['ランク', '人数', '割合'] : ['分類', '件数', '枚数', '割合'];
+  const table = el('table', { class: 'grid share-table' },
+    el('tr', {}, ...head.map((h, i) => el('th', i ? { class: 'num' } : {}, h))),
+    ...d.rows.map((r) => {
+      const tr = el('tr', { class: (sel && sel !== r.key ? 'dim' : '') + (sel === r.key ? ' on' : '') },
+        el('td', {}, el('span', { class: 'swatch', style: 'background:' + r.color }), r.label),
+        el('td', { class: 'num' }, r.count.toLocaleString('ja-JP')),
+        ...(kind === 'fishShare' ? [el('td', { class: 'num' }, fmtInt(r.value))] : []),
+        el('td', { class: 'num' }, pctText(r.ratio)));
+      tr.addEventListener('click', () => pick(r.key));
+      return tr;
+    }));
+  const note = kind === 'rankShare' ? '預けている人のランク別の人数です。' : '手元＋預入（元本）の枚数で分けています（報酬は入れていません）。運営のアドレスは Community にまとめています。';
+  $('rankShareBox').replaceChildren(el('h2', {}, kind === 'rankShare' ? 'ランク割合（人数）' : '魚分類の割合（枚数）'), el('div', { class: 'donut-wrap' }, svg), el('div', { class: 'scroll' }, table), el('p', { class: 'muted' }, note));
+}
