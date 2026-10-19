@@ -150,9 +150,10 @@ function renderRewardTab(who, showTotal = true, opts = {}) {
   const withdraw = wdYen > 0 && wdUnitPrice > 0 ? wdYen / wdUnitPrice : 0; // 年間の枚数
   const perYear = { day: 365, week: 52, month: 12, year: 1 }[wdFreq];
   const freqJa = { day: '1日', week: '1週', month: '1か月', year: '1年' }[wdFreq];
-  $('wdInfo').textContent = !(wdYen > 0) ? '年間希望報酬を入れると、必要な枚数を計算して引き出します。'
-    : !(wdUnitPrice > 0) ? 'TUX価格を入力してください。'
-    : '必要な枚数：年間 ' + fmtDec2(withdraw) + ' ' + sym + (holding > 0 ? '（今日の保有枚数の ' + (withdraw / holding * 100).toFixed(1) + '%）' : '') + '・' + freqJa + 'に ' + fmtDec2(withdraw / perYear) + ' ' + sym;
+  $('wdInfo').replaceChildren(...(!(wdYen > 0) ? ['年間希望報酬を入れると、必要な枚数を計算して引き出します。']
+    : !(wdUnitPrice > 0) ? ['TUX価格を入力してください。']
+    : ['必要な枚数：年間 ' + fmtDec2(withdraw) + ' ' + sym + (holding > 0 ? '（今日の保有枚数の ' + (withdraw / holding * 100).toFixed(1) + '%）' : ''), el('br'),
+      freqJa + 'に ' + fmtDec2(withdraw / perYear) + ' ' + sym]));
   const months = simYears * 12;
   const w = target.share > 0 ? withdraw / target.share : 0;
   const proj = { simple: Reward.project(split, rk, now, 'simple', months, w, wdFreq), compound: Reward.project(split, rk, now, 'compound', months, w, wdFreq) };
@@ -209,7 +210,9 @@ function renderAsset(who, s, all = who) {
   const sym = data.token.symbol;
   const price = Number(data.price) || 0;
   const per = PERIODS[assetPeriod];
-  const trial = trialPrice > 0 ? trialPrice : 0;
+  // 試算価格：空欄なら「例」の価格（現在価格の2倍。現在価格がなければ 20 円）で計算する（2026-10 ユーザー指示）
+  const examplePrice = price ? Math.round(price * 2 * 100) / 100 : 20;
+  const trial = trialPrice > 0 ? trialPrice : examplePrice;
   const na = '—';
   // 対象ごとの数字
   const calc = (w) => {
@@ -273,7 +276,7 @@ function renderAsset(who, s, all = who) {
 
   // シミュレーション：縦に 資産額・含み損益・報酬、横に 現在価格・試算価格
   if (document.activeElement !== $('trialInput')) $('trialInput').value = trialPrice || '';
-  $('trialInput').placeholder = '例：' + (price ? String(Math.round(price * 2 * 100) / 100) : '20');
+  $('trialInput').placeholder = '例：' + String(examplePrice);
   document.querySelectorAll('#periodSeg button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.period === assetPeriod)));
   $('assetPrice').textContent = '現在価格：' + (price ? yenUnit(price) : '未設定');
   $('rateNow').textContent = s.rankNow ? s.rankNow.name + ' ' + pct(s.rateNow) : 'ランク外 0%';
@@ -292,11 +295,11 @@ function renderAsset(who, s, all = who) {
     ? [cell(yen(c.coins * pr)), cell(c.cost > 0 ? signedYen(c.coins * pr - c.cost) : na, c.cost > 0 ? signedPct((c.coins * pr - c.cost) / c.cost) : null), cell(yen(c.reward * pr), fmtDec2(c.reward) + ' ' + sym)]
     : [cell(na), cell(na), cell(na, fmtDec2(c.reward) + ' ' + sym)];
   const now = col(price);
-  const tri = trial ? col(trial) : [cell('価格を入力'), cell(na), cell(na)];
+  const tri = col(trial);
   // 期間のボタンとランクは、含み損益と報酬の行の間に置く（ボタンは左、ランクは表の右端）。画面に1つずつある部品を、行に移して使う
   const ctl = el('tr', { class: 'sim-ctl' }, el('td', { colspan: '3' }, el('div', { class: 'sim-ctl-in' }, $('periodSeg'), $('rateNow'))));
   $('simTable').replaceChildren(
-    el('tr', {}, th(''), th('現在価格', 1), th('試算価格', 1)),
+    el('tr', {}, th(''), th('現在価格', 1), th(trialPrice > 0 ? '試算価格' : '試算価格（例）', 1)),
     el('tr', {}, el('th', {}, '資産額'), now[0], tri[0]),
     el('tr', {}, el('th', {}, '含み損益'), now[1], tri[1]),
     ctl,
