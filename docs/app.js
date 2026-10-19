@@ -67,6 +67,7 @@ function renderReward() {
   // 設定で選んだ対象を、選んだ順に
   const pick = (key) => orders[key].filter((x) => x.on).map((x) => all.find((w) => w.id === x.id)).filter(Boolean);
   renderRewardTab(all, true, { rewardWho: pick('reward'), assetWho: pick('asset') });
+  renderRankingTab(pick('reward')); // ランキングタブの一番上も「保有枚数の表示」の対象・順番
 }
 
 function renderSettings() {

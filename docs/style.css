@@ -319,3 +319,26 @@ main { overflow-x: clip; }
 .swipe-hint.go { transition: transform .25s ease-in, opacity .25s ease-in; opacity: 0 !important; }
 .swipe-hint.right.go { transform: translateY(-50%) translateX(-60vw); }
 .swipe-hint.left.go { transform: translateY(-50%) translateX(60vw); }
+/* ランキングタブ（1.4）：一番上の推定順位、①②の一覧（順位・変化・魚分類の絵文字・名前・合計） */
+.rank-est { display: flex; align-items: center; gap: 12px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); }
+.rank-est-no { font-size: 15px; }
+.rank-est-no b { font-size: 22px; margin: 0 2px; }
+.rank-est .muted { margin: 2px 0 0; }
+/* 魚分類の絵文字は枠いっぱいに */
+.fish { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; font-size: 20px; line-height: 1; flex: none; }
+.fish.big { width: 48px; height: 48px; font-size: 44px; }
+.rank-seg { display: flex; margin: 16px 0 6px; }
+.rank-seg button { flex: 1; }
+.ranklist li.rank-row { display: block; padding: 8px 10px; }
+.rank-line { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.rank-line .cp { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rk-no { min-width: 2.2em; font-weight: 700; font-variant-numeric: tabular-nums; }
+.rk-total { font-weight: 600; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.rk-chg { font-size: 11px; padding: 0 5px; border-radius: 999px; border: 1px solid var(--edge); white-space: nowrap; }
+.rk-chg.up { color: var(--in); border-color: currentColor; }
+.rk-chg.down { color: var(--out); border-color: currentColor; }
+.rk-chg.new { color: #f0c35a; border-color: currentColor; }
+.rk-chg.same { color: var(--muted); }
+.rank-sub { font-size: 12px; color: var(--muted); margin: 2px 0 0 calc(2.2em + 6px); font-variant-numeric: tabular-nums; }
+.ranklist li.self { box-shadow: inset 3px 0 0 var(--accent); }
+.tabs button span { white-space: nowrap; }
