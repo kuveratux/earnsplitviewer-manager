@@ -147,6 +147,7 @@ function renderRewardTab(who, showTotal = true, opts = {}) {
   const wdUnitPrice = wdPrice > 0 ? wdPrice : nowPrice; // 空欄なら現在価格
   if (document.activeElement !== $('wdPrice')) $('wdPrice').value = wdPrice > 0 ? wdPrice : (nowPrice || '');
   if (document.activeElement !== $('wdYen')) $('wdYen').value = wdYen || '';
+  showYenUnit();
   const withdraw = wdYen > 0 && wdUnitPrice > 0 ? wdYen / wdUnitPrice : 0; // 年間の枚数
   const perYear = { day: 365, week: 52, month: 12, year: 1 }[wdFreq];
   const freqJa = { day: '1日', week: '1週', month: '1か月', year: '1年' }[wdFreq];
@@ -337,6 +338,14 @@ document.querySelectorAll('#yearsSeg button').forEach((b) => b.addEventListener(
 const numIn = (id) => { const v = Number($(id).value); return Number.isFinite(v) && v > 0 ? v : 0; };
 $('wdPrice').addEventListener('change', async () => { wdPrice = numIn('wdPrice'); if (wdPrice && data && wdPrice === Number(data.price)) wdPrice = 0; await putSetting('wdPrice', wdPrice); refreshAll(); });
 $('wdYen').addEventListener('change', async () => { wdYen = numIn('wdYen'); await putSetting('wdYen', wdYen); refreshAll(); });
+// 年間希望報酬の横の読みやすい表示：1億円未満は「○○万円」（小数1桁まで）、1億円以上は「○.○億円」
+function yenUnitText(v) {
+  if (!(v > 0)) return '';
+  if (v >= 1e8) return (Math.floor(v / 1e7) / 10).toFixed(1) + '億円';
+  return (Math.round(v / 1e3) / 10).toLocaleString('ja-JP', { maximumFractionDigits: 1 }) + '万円';
+}
+const showYenUnit = () => { $('wdYenUnit').textContent = yenUnitText(Number($('wdYen').value)); };
+$('wdYen').addEventListener('input', showYenUnit);
 document.querySelectorAll('#wdFreqSeg button').forEach((b) => b.addEventListener('click', async () => { wdFreq = b.dataset.freq; await putSetting('wdFreq', wdFreq); refreshAll(); }));
 // ---- コインのアイコン（報酬タブの保有枚数の数値の前。スマホの中の画像を選んで設定し、この端末の中だけに保存）
 // Manager は 合算・Manager・Agent の3つ、Agent は自分の1つ。画像は元の形のまま、長い辺を 160px に縮めた PNG（データ URL）で持つ
