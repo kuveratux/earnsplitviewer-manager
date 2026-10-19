@@ -44,11 +44,15 @@
       <div id="rankNote" class="note" hidden></div>
       <div id="rankBody">
         <div id="rankCards"></div>
-        <div id="rankSeg" class="seg rank-seg" role="group" aria-label="ランキングの種類">
-          <button type="button" data-list="holders" aria-pressed="true">保有者</button>
-          <button type="button" data-list="depositors" aria-pressed="false">預入</button>
-          <button type="button" data-list="rankShare" aria-pressed="false">EARN</button>
-          <button type="button" data-list="fishShare" aria-pressed="false">Tier</button>
+        <div id="rankSeg" class="rank-groups" role="group" aria-label="ランキングの種類">
+          <div class="rank-group">
+            <div class="rg-title">保有者</div>
+            <div class="seg"><button type="button" data-list="holders" aria-pressed="true">順位</button><button type="button" data-list="fishShare" aria-pressed="false">割合</button></div>
+          </div>
+          <div class="rank-group">
+            <div class="rg-title">EARN</div>
+            <div class="seg"><button type="button" data-list="depositors" aria-pressed="false">順位</button><button type="button" data-list="rankShare" aria-pressed="false">割合</button></div>
+          </div>
         </div>
         <div id="rankShareBox" class="card share-box" hidden></div>
         <ul id="rankList" class="txlist ranklist"></ul>

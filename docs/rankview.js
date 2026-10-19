@@ -187,11 +187,16 @@ function rankShareOf(depositors, holders) {
   const colors = rampFor(names.length).reverse();
   const nowTable = Date.now() / 1000 >= Date.parse(ranks.new.startDate + 'T00:00:00+09:00') / 1000 ? ranks.new.ranks : ranks.old.ranks;
   const apyOf = (name) => { const r = nowTable.find((x) => x.name === name); return r ? pct(r.rate) : '—'; };
-  const NONE = '預入なし';
+  const NONE = '利用無し'; // EARN を利用していない（預けていない）人
   const rows = [...names, OUT].map((name, i) => ({ key: name, label: name, color: name === OUT ? SHARE_GRAY : colors[i], apy: name === OUT ? '—' : apyOf(name), count: depositors.filter((p) => (p.rankName || OUT) === name).length }));
   rows.push({ key: NONE, label: NONE, color: SHARE_GRAY_DARK, apy: '—', count: holders.filter((h) => !(h.principal > 0)).length });
   const total = rows.reduce((t, r) => t + r.count, 0);
-  return { unit: '人', total, center: total.toLocaleString('ja-JP') + '人', centerSub: '保有者', rows: rows.filter((r) => r.count > 0 || (r.key !== OUT && r.key !== NONE)).map((r) => ({ ...r, value: r.count, ratio: total ? r.count / total : 0 })) };
+  const used = total - rows[rows.length - 1].count; // 利用あり＝レベル（レベル外を含む）の人数
+  return {
+    unit: '人', total, used, usedRatio: total ? used / total : 0, NONE,
+    center: (total ? (used / total * 100).toFixed(1) : '0') + '%', centerSub: 'EARN 利用者（' + used.toLocaleString('ja-JP') + '／' + total.toLocaleString('ja-JP') + '人）',
+    rows: rows.filter((r) => r.count > 0 || (r.key !== OUT && r.key !== NONE)).map((r) => ({ ...r, value: r.count, ratio: total ? r.count / total : 0 })),
+  };
 }
 
 // ④：手元＋元本（報酬は入れない）の分類別の枚数。運営は Community。分配の行は Manager 分・Agent 分として数える
@@ -221,7 +226,7 @@ function renderShare(d, kind) {
   const pick = (key) => { shareSel[kind] = shareSel[kind] === key ? null : key; refreshAll(); };
   // ドーナツ（上から時計回り。区分の間に地の色のすき間）
   const S = 220, C = S / 2, RO = 100, RI = 62;
-  const svg = svgEl('svg', { viewBox: `0 0 ${S} ${S}`, class: 'donut', role: 'img', 'aria-label': kind === 'rankShare' ? 'EARN の割合' : 'Tier の割合' });
+  const svg = svgEl('svg', { viewBox: `0 0 ${S} ${S}`, class: 'donut', role: 'img', 'aria-label': kind === 'rankShare' ? 'EARN利用者比率' : 'トークン配分内訳' });
   let a0 = -Math.PI / 2;
   const pt = (r, a) => [C + r * Math.cos(a), C + r * Math.sin(a)];
   for (const r of d.rows) {
@@ -246,21 +251,24 @@ function renderShare(d, kind) {
   const t2 = svgEl('text', { x: C, y: C + 18, class: 'donut-sub', 'text-anchor': 'middle' }); t2.textContent = s ? (s.text || s.label) : d.centerSub;
   svg.append(t1, t2);
 
-  // 表（凡例を兼ねる。押すと選ぶ）
-  const head = kind === 'rankShare' ? ['レベル', '人数', '割合', 'APY'] : ['Tier', '件数', '枚数', '割合'];
+  // 表（凡例を兼ねる。押すと選ぶ）。EARN利用者比率は 利用あり（その下にレベル）・利用無し の順
+  const head = kind === 'rankShare' ? ['', '人数', '割合', 'APY'] : ['Tier', '件数', '枚数', '割合'];
+  const rowsForTable = kind === 'rankShare'
+    ? [{ key: '__used', label: '利用あり', head: true, count: d.used, ratio: d.usedRatio, apy: '' }, ...d.rows.filter((r) => r.key !== d.NONE).map((r) => ({ ...r, sub: true })), ...d.rows.filter((r) => r.key === d.NONE).map((r) => ({ ...r, head: true }))]
+    : d.rows;
   const table = el('table', { class: 'grid share-table' },
     el('tr', {}, ...head.map((h, i) => el('th', i ? { class: 'num' } : {}, h))),
-    ...d.rows.map((r) => {
-      const tr = el('tr', { class: (sel && sel !== r.key ? 'dim' : '') + (sel === r.key ? ' on' : '') },
-        el('td', {}, el('span', { class: 'swatch', style: 'background:' + r.color }), r.image ? el('img', { class: 'share-img', src: r.image, alt: '' }) : null, r.label),
+    ...rowsForTable.map((r) => {
+      const tr = el('tr', { class: (sel && sel !== r.key && r.key !== '__used' ? 'dim' : '') + (sel === r.key ? ' on' : '') + (r.sub ? ' sub' : '') + (r.head ? ' head' : '') },
+        el('td', {}, r.key === '__used' ? el('span', { class: 'swatch none' }) : el('span', { class: 'swatch', style: 'background:' + r.color }), r.image ? el('img', { class: 'share-img', src: r.image, alt: '' }) : null, r.label),
         el('td', { class: 'num' }, r.count.toLocaleString('ja-JP')),
         ...(kind === 'fishShare' ? [el('td', { class: 'num' }, fmtInt(r.value))] : []),
         el('td', { class: 'num' }, pctText(r.ratio)),
         ...(kind === 'rankShare' ? [el('td', { class: 'num' }, r.apy)] : []));
-      tr.addEventListener('click', () => pick(r.key));
+      if (r.key !== '__used') tr.addEventListener('click', () => pick(r.key));
       return tr;
     }));
-  $('rankShareBox').replaceChildren(el('h2', {}, kind === 'rankShare' ? 'EARN の割合（人数）' : 'Tier の割合（枚数）'), el('div', { class: 'donut-wrap' }, svg), el('div', { class: 'scroll' }, table));
+  $('rankShareBox').replaceChildren(el('h2', {}, kind === 'rankShare' ? 'EARN利用者比率' : 'トークン配分内訳'), el('div', { class: 'donut-wrap' }, svg), el('div', { class: 'scroll' }, table));
 }
 
 // ---- Community（運営）の表示：名前・画像・色（設定タブ。端末の中だけに保存 'communityStyle'）

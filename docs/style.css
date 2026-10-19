@@ -378,3 +378,15 @@ main { overflow-x: clip; }
 .wd-freq { display: flex; align-items: center; gap: 8px; margin: 6px 0; }
 .wd-freq .seg button { padding: 4px 14px; }
 #wdInfo { margin: 6px 0 0; }
+/* 1.7：ランキングの切り替え（上段に枠「保有者」「EARN」、下段に［順位｜割合］）、EARN利用者比率の表 */
+.rank-groups { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 16px 0 8px; }
+.rank-group { border: 1px solid var(--edge); border-radius: 12px; padding: 6px 8px 8px; background: var(--card-2); transition: border-color .15s, box-shadow .15s; }
+.rank-group .rg-title { font-size: 13px; font-weight: 700; color: var(--muted); text-align: center; margin-bottom: 6px; letter-spacing: .04em; }
+.rank-group .seg { display: flex; }
+.rank-group .seg button { flex: 1; padding: 5px 0; font-size: 13px; }
+.rank-group:has(button[aria-pressed="true"]) { border-color: #6fa3ff; box-shadow: 0 0 12px rgba(70, 130, 255, .35); }
+.rank-group:has(button[aria-pressed="true"]) .rg-title { color: #fff; }
+.share-table tr.head td { font-weight: 700; }
+.share-table tr.sub td:first-child { padding-left: 26px; }
+.share-table tr.head + tr.sub td, .share-table tr.sub td { font-size: 13px; }
+.swatch.none { background: transparent; }
