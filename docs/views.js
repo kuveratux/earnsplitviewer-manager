@@ -79,7 +79,7 @@ function renderRewardTab(who, showTotal = true, opts = {}) {
   const ok = split && ranks.old && ranks.new;
   $('rewardNote').hidden = !!ok;
   $('rewardNote').textContent = !split ? '「分配」に仕分けた取引がないため、報酬は計算していません。'
-    : 'ランク表（旧・新）が読み込まれていないため、報酬を計算できません。「設定」で読み込んでください。';
+    : 'ランク表が読み込まれていないため、報酬を計算できません。「設定」の［最新データを取得］で、新しいデータを読み込んでください。';
   $('rewardBody').hidden = !ok;
   // 資産タブも同じ条件（預入とランク表がないと、枚数を計算できない）
   $('assetNote').hidden = !!ok;

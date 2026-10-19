@@ -76,7 +76,12 @@ const SCOPE_LABEL = { manager: 'Manager', agent: 'Agent' };
 
 function validateData(d) {
   if (!d || d.format !== 'esv-data' || !d.generatedAt) throw new Error('EARN SPLIT VIEWER のデータファイルではありません');
-  if (d.version !== 2) throw new Error('古い形式のデータファイルです。取得エクセルの［ビューア用ファイルを作成］で作り直してください');
+  if (d.version !== 2 && d.version !== 3) throw new Error('古い形式のデータファイルです。取得エクセルの［ビューア用ファイルを作成］で作り直してください');
+  // version 3：ランク表（旧・新・新ランク表の開始日）がデータの中にある
+  if (d.version === 3) {
+    const r = d.ranks;
+    if (!r || !Array.isArray(r.old) || !r.old.length || !Array.isArray(r.new) || !r.new.length || !/^\d{4}-\d{2}-\d{2}$/.test(r.newStartDate || '')) throw new Error('データファイルのランク表の形式が違います');
+  }
   if (d.scope !== APP.dataScope) {
     throw new Error('このファイルは ' + (SCOPE_LABEL[d.scope] || d.scope) + ' 用のデータです。' + SCOPE_LABEL[APP.dataScope] + ' 用のファイルを選んでください');
   }
@@ -135,7 +140,7 @@ async function decryptIfNeeded(json) {
 
 async function loadSavedData() {
   const saved = await getSetting('current');
-  if (saved && saved.data && saved.data.version === 2) { data = saved.data; dataMeta = saved.meta; }
+  if (saved && saved.data && [2, 3].includes(saved.data.version)) { data = saved.data; dataMeta = saved.meta; }
   ranks.old = (await getSetting('rankOld')) || null;
   ranks.new = (await getSetting('rankNew')) || null;
 }
@@ -168,6 +173,14 @@ async function importText(text, fileName, source) {
     return 'データは最新です（作成：' + fmtJst(json.generatedAt) + '）';
   }
   const meta = { fileName, source, importedAt: new Date().toISOString() };
+  // version 3：データの中のランク表を、これまでと同じ保存場所（rankOld・rankNew）に入れる（報酬の計算はそのまま）
+  if (json.version === 3) {
+    const at = { generatedAt: json.generatedAt, fileName, importedAt: meta.importedAt };
+    ranks.old = { ranks: json.ranks.old, startDate: '', ...at };
+    ranks.new = { ranks: json.ranks.new, startDate: json.ranks.newStartDate, ...at };
+    await putSetting('rankOld', ranks.old);
+    await putSetting('rankNew', ranks.new);
+  }
   await putSetting('current', { data: json, meta });
   data = json;
   dataMeta = meta;
@@ -197,20 +210,22 @@ document.querySelectorAll('.dataFile').forEach((input) => input.addEventListener
 //--------------------------------------------------------------
 let driveBusy = false;
 
-// ドライブのファイルは、データ・旧ランク表・新ランク表の3つの枠に1つずつ覚える（'driveSlots'）
-// 足りない枠があれば、取得のときに1つずつ選んでもらう。選び直しは枠ごと
+// ドライブのファイルは、データの1つだけを覚える（'driveSlots' の data）。1.3 から、ランク表はデータの中に入っている
+// （以前は データ・旧ランク表・新ランク表 の3つの枠。旧・新の枠の記録は、取得のときに消す）
 const SLOTS = [
   { key: 'data', label: () => SCOPE_LABEL[APP.dataScope] + ' 用のデータ', hint: () => 'esv_' + APP.dataScope + '_latest.json' },
-  { key: 'rankOld', label: () => '旧ランク表', hint: () => 'esv_' + APP.dataScope + '_rank_old.json' },
-  { key: 'rankNew', label: () => '新ランク表', hint: () => 'esv_' + APP.dataScope + '_rank_new.json' },
 ];
+const OLD_SLOT_KEYS = ['rankOld', 'rankNew'];
+// 以前のランク表のファイル（esv_*_rank_old/new.json）。選ばれたら開く前に断る（中身が古いまま残っているため）
+const isRankFileName = (name) => /_rank_(old|new)\b/i.test(String(name || ''));
 const slotOf = (key) => SLOTS.find((x) => x.key === key);
 
 // ファイル名に、このアプリの名前（manager / agent）が入っているか。入っていなければ開く前に断る
 // （他方の合言葉で暗号化されたファイルを開こうとして、合言葉を聞かれたり、保存した合言葉が置き換わったりしないように）
 const nameFits = (name) => String(name || '').toLowerCase().includes(APP.dataScope);
 const nameError = (name) => '「' + name + '」は ' + SCOPE_LABEL[APP.dataScope] + ' 用のファイルではないようです（ファイル名に ' + APP.dataScope + ' が入っていません）。' +
-  SCOPE_LABEL[APP.dataScope] + ' フォルダのファイル（例：esv_' + APP.dataScope + '_rank_old.json）を選んでください。'
+  SCOPE_LABEL[APP.dataScope] + ' フォルダのファイル（esv_' + APP.dataScope + '_latest.json）を選んでください。'
+const rankFileError = (name) => '「' + name + '」は以前のランク表のファイルです。今はランク表がデータに入っているので、データのファイル（esv_' + APP.dataScope + '_latest.json）を選んでください。'
 
 async function getSlots() {
   return (await getSetting('driveSlots')) || {};
@@ -232,14 +247,15 @@ async function pickSlot(key, msgs) {
   if (!picked || !picked.length) return null;
   const file = picked[0];
   if (!nameFits(file.name)) { msgs.push(nameError(file.name)); return 'cancel'; }
+  if (isRankFileName(file.name)) { msgs.push(rankFileError(file.name)); return 'cancel'; }
   $('status').textContent = slot.label() + 'を取得中…';
   const r = await driveImportOne(file);
   if (!r.kind) return 'cancel'; // 合言葉の入力をやめた
   const slots = await getSlots();
-  slots[r.kind] = { id: file.id, name: r.name };
+  if (r.kind !== 'data') { if (r.msg) msgs.push(r.msg); return 'cancel'; } // 枠はデータだけ（ここには来ない想定）
+  slots.data = { id: file.id, name: r.name };
   await putSetting('driveSlots', slots);
   if (r.msg) msgs.push(r.msg);
-  if (r.kind !== key) msgs.push('※ 選んだファイルは「' + slotOf(r.kind).label() + '」でした。そちらとして覚えました。「' + slot.label() + '」は、もう一度選んでください。');
   return r.kind;
 }
 
@@ -261,8 +277,9 @@ async function fetchFromDrive(pickKey) {
     if (pickKey) {
       await pickSlot(pickKey, msgs);
     } else {
-      // 覚えている枠を取得
+      // 覚えている枠を取得（以前の旧・新ランク表の枠の記録は消す）
       const slots = await getSlots();
+      if (OLD_SLOT_KEYS.some((k) => slots[k])) { OLD_SLOT_KEYS.forEach((k) => delete slots[k]); await putSetting('driveSlots', slots); }
       for (const slot of SLOTS) {
         const file = slots[slot.key];
         if (!file) continue;
