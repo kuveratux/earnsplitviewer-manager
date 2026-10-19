@@ -210,8 +210,8 @@ function renderAsset(who, s, all = who) {
   const sym = data.token.symbol;
   const price = Number(data.price) || 0;
   const per = PERIODS[assetPeriod];
-  // 試算価格：空欄なら「例」の価格（現在価格の2倍。現在価格がなければ 20 円）で計算する（2026-10 ユーザー指示）
-  const examplePrice = price ? Math.round(price * 2 * 100) / 100 : 20;
+  // 試算価格：空欄なら「例」の価格（15 円で固定）で計算する（2026-10 ユーザー指示）
+  const examplePrice = 15;
   const trial = trialPrice > 0 ? trialPrice : examplePrice;
   const na = '—';
   // 対象ごとの数字
@@ -299,7 +299,7 @@ function renderAsset(who, s, all = who) {
   // 期間のボタンとランクは、含み損益と報酬の行の間に置く（ボタンは左、ランクは表の右端）。画面に1つずつある部品を、行に移して使う
   const ctl = el('tr', { class: 'sim-ctl' }, el('td', { colspan: '3' }, el('div', { class: 'sim-ctl-in' }, $('periodSeg'), $('rateNow'))));
   $('simTable').replaceChildren(
-    el('tr', {}, th(''), th('現在価格', 1), th(trialPrice > 0 ? '試算価格' : '試算価格（例）', 1)),
+    el('tr', {}, th(''), th('現在価格', 1), th('試算価格', 1)),
     el('tr', {}, el('th', {}, '資産額'), now[0], tri[0]),
     el('tr', {}, el('th', {}, '含み損益'), now[1], tri[1]),
     ctl,
