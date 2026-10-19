@@ -55,10 +55,11 @@ const Reward = (() => {
 
   // 見込み。今日から months か月後まで、1か月ごとの倍率（元の1枚あたりの枚数）を返す
   // mode：'simple' | 'compound'。[{ t（その日の日本時間 0:00）, k（その時点の日数）, g（倍率） }]
-  // withdraw：年間の取り崩し（元の1枚あたりの枚数。例：取り分 4,800 で年 480 枚なら 0.1）。月に1回、その 1/12 を引く（0 で止める）
+  // withdraw：年間の引出し（元の1枚あたりの枚数。例：取り分 4,800 で年 480 枚なら 0.1）。0 で止める
+  // freq：引出しのタイミング。'day'＝毎日 1/365、'week'＝7日ごと 1/52、'month'＝月に1回 1/12（既定）、'year'＝1年ごとに全部（今日は引かない）
   //   単利：取り崩した分だけ、報酬の元（p）も減る。複利：その時点の枚数に年利をかけるので、引いた分だけ報酬も減る
   //   年利：取り崩しで枚数が減っても下げない（年利は別管理。ユーザー決定）。複利で増えてランクが上がったときは上げる
-  function project(split, rk, now, mode, months = 36, withdraw = 0) {
+  function project(split, rk, now, mode, months = 36, withdraw = 0, freq = 'month') {
     const s = settled(split, rk, now);
     const today = addMonthsJst(now, 0);
     const points = [];
@@ -66,9 +67,11 @@ const Reward = (() => {
       const t = i === 0 ? now : addMonthsJst(today, i);
       points.push({ t, k: Math.max(s.days, Math.floor((t - split.t) / DAY)), month: i });
     }
-    const monthly = withdraw > 0 ? withdraw / 12 : 0;
+    const per = { day: 365, week: 52, month: 12, year: 1 }[freq] || 12;
+    const each = withdraw > 0 ? withdraw / per : 0; // 1回に引く枚数
     let g = 1 + s.factor; // 保有枚数（元の1枚あたり）
     let base = 1;         // 単利の報酬の元（元の1枚あたり）
+    const take = () => { const x = Math.min(each, g); g -= x; base = Math.max(0, base - x); };
     let k = s.days;
     for (const p of points) {
       for (; k < p.k; ) {
@@ -82,13 +85,11 @@ const Reward = (() => {
           const r = rankFor(table, s.total);
           g += base * (r ? r.rate : 0) / 365;
         }
+        // 日・週の引出し（今日から数えて1日目・7日目…。その日の報酬を足したあと）
+        if (each && (freq === 'day' || (freq === 'week' && (k - s.days) % 7 === 0))) take();
       }
-      // 月に1回の取り崩し（今日は引かない）
-      if (monthly && p.month > 0) {
-        const take = Math.min(monthly, g);
-        g -= take;
-        base = Math.max(0, base - take);
-      }
+      // 月・年の引出し（今日は引かない）
+      if (each && p.month > 0 && (freq === 'month' || (freq === 'year' && p.month % 12 === 0))) take();
       p.g = g;
     }
     return points;

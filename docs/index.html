@@ -107,7 +107,19 @@
           </div>
           <select id="whoSel" aria-label="対象" hidden></select>
         </div>
-        <label class="trial-row">年間取り崩し：<input id="withdrawInput" type="number" inputmode="decimal" min="0" step="any" placeholder="0"><span id="withdrawUnit"></span><span id="withdrawPct" class="muted"></span></label>
+        <div class="wd-box">
+          <label class="trial-row">TUX価格：<input id="wdPrice" type="number" inputmode="decimal" min="0" step="any">円</label>
+          <label class="trial-row">年間希望報酬：<input id="wdYen" class="wide" type="number" inputmode="numeric" min="0" step="any" placeholder="0">円</label>
+          <div class="wd-freq"><span>引出し：</span>
+            <div id="wdFreqSeg" class="seg" role="group" aria-label="引出しのタイミング">
+              <button type="button" data-freq="day" aria-pressed="false">日</button>
+              <button type="button" data-freq="week" aria-pressed="false">週</button>
+              <button type="button" data-freq="month" aria-pressed="true">月</button>
+              <button type="button" data-freq="year" aria-pressed="false">年</button>
+            </div>
+          </div>
+          <p id="wdInfo" class="muted"></p>
+        </div>
         <div id="rewardChart"></div>
         <h2 class="sec">見込みの一覧</h2>
         <div class="scroll"><table id="rewardTable" class="grid"></table></div>
@@ -133,7 +145,7 @@
           <div id="heroSub" class="muted"></div>
           <div id="assetList" class="hero-folds"></div>
         </div>
-        <h2 class="sec">シミュレーション</h2>
+        <h2 class="sec">資産シミュレーション</h2>
         <div class="card">
           <p id="assetPrice" class="muted"></p>
           <label class="trial-row">試算価格：<input id="trialInput" type="number" inputmode="decimal" min="0" step="any">円</label>

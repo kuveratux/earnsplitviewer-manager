@@ -371,3 +371,10 @@ main { overflow-x: clip; }
 .share-img { height: 18px; width: auto; max-width: 36px; object-fit: contain; vertical-align: -4px; margin-right: 6px; }
 .com-color { align-items: center; gap: 12px; margin-top: 8px; }
 .com-color input[type=color] { width: 44px; height: 32px; padding: 0 2px; border-radius: 6px; vertical-align: middle; margin-left: 6px; background: var(--card-2); border: 1px solid var(--edge); }
+/* 1.6：運用シミュレーションの引出し（TUX価格・年間希望報酬・タイミング） */
+.wd-box { margin: 8px 0 10px; }
+.wd-box .trial-row { margin: 6px 0; }
+.wd-box input.wide { width: calc(10ch + 10px); }
+.wd-freq { display: flex; align-items: center; gap: 8px; margin: 6px 0; }
+.wd-freq .seg button { padding: 4px 14px; }
+#wdInfo { margin: 6px 0 0; }

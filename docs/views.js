@@ -139,15 +139,23 @@ function renderRewardTab(who, showTotal = true, opts = {}) {
   const target = targets.find((t) => t.id === rewardWho);
   document.querySelectorAll('#modeSeg button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.mode === rewardMode)));
 
-  // 運用シミュレーション：期間（1・3・5・10年）、年間取り崩し（月に1回、その 1/12 を引く）
+  // 運用シミュレーション：期間（1・3・5・10年）、引出し（TUX価格と年間希望報酬〔円〕から年間の枚数を出し、日・週・月・年のタイミングで引く）
   document.querySelectorAll('#yearsSeg button').forEach((b) => b.setAttribute('aria-pressed', String(Number(b.dataset.years) === simYears)));
+  document.querySelectorAll('#wdFreqSeg button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.freq === wdFreq)));
   const holding = target.share * (1 + s.factor); // 今日の保有枚数
-  if (document.activeElement !== $('withdrawInput')) $('withdrawInput').value = withdraw || '';
-  $('withdrawUnit').textContent = sym;
-  $('withdrawPct').textContent = withdraw > 0 && holding > 0 ? '（今日の保有枚数の ' + (withdraw / holding * 100).toFixed(1) + '%）' : '';
+  const nowPrice = Number(data.price) || 0; // データの現在価格
+  const wdUnitPrice = wdPrice > 0 ? wdPrice : nowPrice; // 空欄なら現在価格
+  if (document.activeElement !== $('wdPrice')) $('wdPrice').value = wdPrice > 0 ? wdPrice : (nowPrice || '');
+  if (document.activeElement !== $('wdYen')) $('wdYen').value = wdYen || '';
+  const withdraw = wdYen > 0 && wdUnitPrice > 0 ? wdYen / wdUnitPrice : 0; // 年間の枚数
+  const perYear = { day: 365, week: 52, month: 12, year: 1 }[wdFreq];
+  const freqJa = { day: '1日', week: '1週', month: '1か月', year: '1年' }[wdFreq];
+  $('wdInfo').textContent = !(wdYen > 0) ? '年間希望報酬を入れると、必要な枚数を計算して引き出します。'
+    : !(wdUnitPrice > 0) ? 'TUX価格を入力してください。'
+    : '必要な枚数：年間 ' + fmtDec2(withdraw) + ' ' + sym + (holding > 0 ? '（今日の保有枚数の ' + (withdraw / holding * 100).toFixed(1) + '%）' : '') + '・' + freqJa + 'に ' + fmtDec2(withdraw / perYear) + ' ' + sym;
   const months = simYears * 12;
   const w = target.share > 0 ? withdraw / target.share : 0;
-  const proj = { simple: Reward.project(split, rk, now, 'simple', months, w), compound: Reward.project(split, rk, now, 'compound', months, w) };
+  const proj = { simple: Reward.project(split, rk, now, 'simple', months, w, wdFreq), compound: Reward.project(split, rk, now, 'compound', months, w, wdFreq) };
   const label = (p) => (p.month === 0 ? '今日' : p.month % 12 === 0 ? (p.month / 12) + '年後' : p.month + 'か月後') + '（' + fmtDay(p.t) + '）';
   const points = proj[rewardMode].map((p) => ({ v: target.share * p.g, label: label(p) }));
   const step = simYears <= 1 ? 3 : simYears <= 5 ? 12 : 24; // 目盛り（1年は3か月ごと、5年までは1年ごと、10年は2年ごと）
@@ -317,16 +325,16 @@ ESV.loaders.push(async () => {
 });
 
 document.querySelectorAll('#modeSeg button').forEach((b) => b.addEventListener('click', () => { rewardMode = b.dataset.mode; refreshAll(); }));
-// 運用シミュレーションの期間と年間取り崩し（端末ごとに保存）
+// 運用シミュレーションの期間と引出し（TUX価格・年間希望報酬・タイミング。端末ごとに保存）
 let simYears = 3;
-let withdraw = 0;
+let wdPrice = 0;   // TUX価格（円）。0＝現在価格を使う
+let wdYen = 0;     // 年間希望報酬（円）
+let wdFreq = 'month';
 document.querySelectorAll('#yearsSeg button').forEach((b) => b.addEventListener('click', async () => { simYears = Number(b.dataset.years); await putSetting('simYears', simYears); refreshAll(); }));
-$('withdrawInput').addEventListener('change', async () => {
-  const v = Number($('withdrawInput').value);
-  withdraw = Number.isFinite(v) && v > 0 ? v : 0;
-  await putSetting('withdraw', withdraw);
-  refreshAll();
-});
+const numIn = (id) => { const v = Number($(id).value); return Number.isFinite(v) && v > 0 ? v : 0; };
+$('wdPrice').addEventListener('change', async () => { wdPrice = numIn('wdPrice'); if (wdPrice && data && wdPrice === Number(data.price)) wdPrice = 0; await putSetting('wdPrice', wdPrice); refreshAll(); });
+$('wdYen').addEventListener('change', async () => { wdYen = numIn('wdYen'); await putSetting('wdYen', wdYen); refreshAll(); });
+document.querySelectorAll('#wdFreqSeg button').forEach((b) => b.addEventListener('click', async () => { wdFreq = b.dataset.freq; await putSetting('wdFreq', wdFreq); refreshAll(); }));
 // ---- コインのアイコン（報酬タブの保有枚数の数値の前。スマホの中の画像を選んで設定し、この端末の中だけに保存）
 // Manager は 合算・Manager・Agent の3つ、Agent は自分の1つ。画像は元の形のまま、長い辺を 160px に縮めた PNG（データ URL）で持つ
 let coinIcons = {};
@@ -376,7 +384,11 @@ ESV.loaders.push(async () => {
 
 ESV.loaders.push(async () => {
   simYears = [1, 3, 5, 10].includes(Number(await getSetting('simYears'))) ? Number(await getSetting('simYears')) : 3;
-  withdraw = Number(await getSetting('withdraw')) || 0;
+  wdPrice = Number(await getSetting('wdPrice')) || 0;
+  wdYen = Number(await getSetting('wdYen')) || 0;
+  const f = await getSetting('wdFreq');
+  wdFreq = ['day', 'week', 'month', 'year'].includes(f) ? f : 'month';
+  delSetting('withdraw').catch(() => { /* 以前の「年間取り崩し（枚数）」は使わない */ });
 });
 $('whoSel').addEventListener('change', () => { rewardWho = $('whoSel').value; refreshAll(); });
 // 画面の幅が変わったらグラフを描き直す（タブを開いたときも）
