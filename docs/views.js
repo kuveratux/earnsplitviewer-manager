@@ -3,7 +3,7 @@
 // 画面の部品（Manager・Agent 共通）：取引タブ（分配の内訳・区分別の件数・取引一覧）
 // core.js の後、各アプリの app.js の前に読み込む
 
-const CLS_LABEL = { manager: 'Manager', agent: 'Agent', deposit: '預け入れ', receive: '受け取り', split: '分配' };
+const CLS_LABEL = { manager: 'Manager', agent: 'Agent', deposit: '預け入れ', receive: '受け取り', split: 'EARN' }; // 区分「分配」は 2026-10 に「EARN」へ改名（内部の値は split のまま）
 const CLS_ORDER = ['split', 'manager', 'agent', 'deposit', 'receive'];
 const pct = (v) => Number((Number(v) * 100).toFixed(4)) + '%';
 
@@ -23,7 +23,7 @@ function renderTxTab(opts) {
   $('splitCard').replaceChildren(split
     ? el('div', { class: 'card' }, el('div', { class: 'sym' }, '預入（' + fmtDate(split.t) + '）'),
       el('div', { class: 'kv kv-plain' }, ...kvRows(opts.splitRows(split).map(([k, v]) => [k, v]))))
-    : el('div', { class: 'card' }, el('div', { class: 'muted' }, '「分配」に仕分けた取引はありません。')));
+    : el('div', { class: 'card' }, el('div', { class: 'muted' }, '「EARN」に仕分けた取引はありません。')));
 
   // 区分別（件数・受取・送付）
   const th = (t, n) => el('th', n ? { class: 'n' } : {}, t);
@@ -78,7 +78,7 @@ function renderRewardTab(who, showTotal = true, opts = {}) {
   const split = data.transfers.find((x) => x.cls === 'split');
   const ok = split && ranks.old && ranks.new;
   $('rewardNote').hidden = !!ok;
-  $('rewardNote').textContent = !split ? '「分配」に仕分けた取引がないため、報酬は計算していません。'
+  $('rewardNote').textContent = !split ? '「EARN」に仕分けた取引がないため、報酬は計算していません。'
     : 'ランク表が読み込まれていないため、報酬を計算できません。「設定」の［最新データを取得］で、新しいデータを読み込んでください。';
   $('rewardBody').hidden = !ok;
   // 資産タブも同じ条件（預入とランク表がないと、枚数を計算できない）

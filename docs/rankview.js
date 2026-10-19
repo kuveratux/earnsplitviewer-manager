@@ -94,7 +94,7 @@ function renderRankingTab(targets) {
 
   // 一番上：保有枚数と推定順位（Manager 分・Agent 分は一覧の中の順位、合算はほかの保有者と比べた順位）
   const multi = APP.id === 'manager';
-  $('rankCards').replaceChildren(...(targets.length ? [] : [el('div', { class: 'card' }, el('p', { class: 'muted' }, split ? '表示する対象がありません。「設定」の「保有枚数の表示」で選んでください。' : '「分配」に仕分けた取引がないため、保有枚数はありません。'))]),
+  $('rankCards').replaceChildren(...(targets.length ? [] : [el('div', { class: 'card' }, el('p', { class: 'muted' }, split ? '表示する対象がありません。「設定」の「保有枚数の表示」で選んでください。' : '「EARN」に仕分けた取引がないため、保有枚数はありません。'))]),
     ...targets.map((w) => {
       // 保有枚数：分配＋報酬。Manager 分と合算には配布先の手元も入れる
       const amount = w.share + w.share * s.factor + (w.id === 'agent' ? 0 : selfWallet);
