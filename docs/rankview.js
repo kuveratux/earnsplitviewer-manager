@@ -246,6 +246,18 @@ function renderShare(d, kind) {
     svg.appendChild(seg);
     a0 = a1;
   }
+  // EARN利用者比率：利用あり（レベルの区分をまとめた範囲。上から時計回りに先に描いている）を赤い線で囲む
+  if (kind === 'rankShare' && d.usedRatio > 0) {
+    let path;
+    if (d.usedRatio >= 0.9999) {
+      path = `M ${C} ${C - RO} A ${RO} ${RO} 0 1 1 ${C - 0.01} ${C - RO} Z M ${C} ${C - RI} A ${RI} ${RI} 0 1 0 ${C - 0.01} ${C - RI} Z`;
+    } else {
+      const b0 = -Math.PI / 2, b1 = b0 + d.usedRatio * Math.PI * 2, big = d.usedRatio > 0.5 ? 1 : 0;
+      const [x0, y0] = pt(RO, b0), [x1, y1] = pt(RO, b1), [x2, y2] = pt(RI, b1), [x3, y3] = pt(RI, b0);
+      path = `M ${x0} ${y0} A ${RO} ${RO} 0 ${big} 1 ${x1} ${y1} L ${x2} ${y2} A ${RI} ${RI} 0 ${big} 0 ${x3} ${y3} Z`;
+    }
+    svg.appendChild(svgEl('path', { d: path, class: 'used-ring' }));
+  }
   const s = d.rows.find((r) => r.key === sel);
   const t1 = svgEl('text', { x: C, y: C - 4, class: 'donut-main', 'text-anchor': 'middle' }); t1.textContent = s ? pctText(s.ratio) : d.center;
   const t2 = svgEl('text', { x: C, y: C + 18, class: 'donut-sub', 'text-anchor': 'middle' }); t2.textContent = s ? (s.text || s.label) : d.centerSub;
@@ -260,7 +272,7 @@ function renderShare(d, kind) {
     el('tr', {}, ...head.map((h, i) => el('th', i ? { class: 'num' } : {}, h))),
     ...rowsForTable.map((r) => {
       const tr = el('tr', { class: (sel && sel !== r.key && r.key !== '__used' ? 'dim' : '') + (sel === r.key ? ' on' : '') + (r.sub ? ' sub' : '') + (r.head ? ' head' : '') },
-        el('td', {}, r.key === '__used' ? el('span', { class: 'swatch none' }) : el('span', { class: 'swatch', style: 'background:' + r.color }), r.image ? el('img', { class: 'share-img', src: r.image, alt: '' }) : null, r.label),
+        el('td', {}, r.key === '__used' ? el('span', { class: 'swatch used' }) : el('span', { class: 'swatch', style: 'background:' + r.color }), r.image ? el('img', { class: 'share-img', src: r.image, alt: '' }) : null, r.label),
         el('td', { class: 'num' }, r.count.toLocaleString('ja-JP')),
         ...(kind === 'fishShare' ? [el('td', { class: 'num' }, fmtInt(r.value))] : []),
         el('td', { class: 'num' }, pctText(r.ratio)),

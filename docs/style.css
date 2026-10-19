@@ -390,3 +390,6 @@ main { overflow-x: clip; }
 .share-table tr.sub td:first-child { padding-left: 26px; }
 .share-table tr.head + tr.sub td, .share-table tr.sub td { font-size: 13px; }
 .swatch.none { background: transparent; }
+/* 1.7.1：EARN利用者比率の「利用あり」を赤で示す（ドーナツの範囲を囲む線、表の■） */
+.donut .used-ring { fill: none; stroke: #ff5a5a; stroke-width: 3px; stroke-linejoin: round; pointer-events: none; }
+.swatch.used { background: #ff5a5a; }
