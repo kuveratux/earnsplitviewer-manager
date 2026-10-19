@@ -34,12 +34,12 @@ function rankingView(now) {
 // 前回からの順位の変化：↑n・↓n・－・新。前回の記録がないときは出さない
 // 配布先の行・分配の行を除いた順位どうしで比べる（分配の行を差し込んだことで、ほかの人の順位がずれて見えないように）
 //   前回の順位（配布先の行を含む）から、配布先が上にいた分を引く
-function rankChange(kind, address, curNo) {
+function rankChange(kind, address, curNo, adjust = true) {
   const prev = data.ranking.previous;
   if (!prev || !prev[kind] || !(address in prev[kind])) return null;
   const p = prev[kind][address];
   if (p == null) return el('span', { class: 'rk-chg new' }, '新');
-  const selfPrev = prev[kind][(data.ranking.self || '').toLowerCase()];
+  const selfPrev = adjust ? prev[kind][(data.ranking.self || '').toLowerCase()] : null;
   const d = (selfPrev != null && selfPrev < p ? p - 1 : p) - curNo;
   return el('span', { class: 'rk-chg ' + (d > 0 ? 'up' : d < 0 ? 'down' : 'same') }, d > 0 ? '↑' + d : d < 0 ? '↓' + -d : '－');
 }
@@ -72,12 +72,15 @@ function renderRankingTab(targets) {
   const now = Math.floor(Date.now() / 1000);
   const v = rankingView(now);
   // 分配しているときは、配布先の行を外し、分配後の Manager 分・Agent 分を差し込む（報酬タブと同じ計算）
-  const self = split ? (rg.self || '').toLowerCase() : '';
+  // ただし Manager アプリで「保有枚数の表示」が合算だけのときは、配布先の行をほかの保有者と同じくアドレスで（合算の枚数で）そのまま出す（2026-10 ユーザー決定）
+  const merged = APP.id === 'manager' && targets.length > 0 && targets.every((w) => w.id === 'total');
+  const selfAddr = split ? (rg.self || '').toLowerCase() : '';
+  const self = merged ? '' : selfAddr; // 一覧から外す行
   const s = split ? Reward.settled(split, { old: ranks.old, new: ranks.new }, now) : null;
   // 配布先アドレスの手元（ウォレットの残高）は Manager 分に入れる（2026-10 ユーザー決定。手元がなければ両方とも 0）
-  const selfRow = v.holders.find((h) => h.address === self);
+  const selfRow = v.holders.find((h) => h.address === selfAddr);
   const selfWallet = selfRow ? selfRow.wallet : 0;
-  const shares = splitShares(split).map((x) => {
+  const shares = (merged ? [] : splitShares(split)).map((x) => {
     const wallet = x.id === 'manager' ? selfWallet : 0;
     const reward = x.share * s.factor;
     return { ...x, wallet, reward, total: wallet + x.share + reward };
@@ -95,18 +98,21 @@ function renderRankingTab(targets) {
     ...targets.map((w) => {
       // 保有枚数：分配＋報酬。Manager 分と合算には配布先の手元も入れる
       const amount = w.share + w.share * s.factor + (w.id === 'agent' ? 0 : selfWallet);
-      const row = holders.find((r) => r.split && r.split.id === w.id);
+      const mergedRow = merged ? holders.find((r) => r.address === selfAddr) : null;
+      const row = merged ? holders.find((r) => r.address === selfAddr) : holders.find((r) => r.split && r.split.id === w.id);
       const est = row ? row.no : others.filter((h) => h.total > amount).length + 1;
       const of = row ? holders.length : others.length + 1;
-      const f = Fish.classify(amount, v.supply).name;
+      const canJump = row && (merged || row.split.show);
+      const shownAmount = mergedRow ? mergedRow.total : amount;
+      const f = Fish.classify(shownAmount, v.supply).name;
       return el('div', { class: 'card asset-hero rank-me' },
         el('div', { class: 'sym' }, multi ? '保有枚数（' + labelOf_(w) + '）' : '保有枚数'),
         el('div', { class: 'hero-row' }, coinIcons[w.id] ? el('img', { class: 'coin-icon', src: coinIcons[w.id], alt: '' }) : null,
-          el('span', { class: 'hero-val' }, fmtInt(amount) + ' ' + sym)),
+          el('span', { class: 'hero-val' }, fmtInt(shownAmount) + ' ' + sym)),
         el('div', { class: 'rank-est' }, fishBadge(f, true),
-          el('div', {}, el(row && row.split.show ? 'button' : 'div', { class: 'rank-est-no' + (row && row.split.show ? ' jump' : ''), type: 'button', onclick: row && row.split.show ? () => jumpToRank(w.id) : null },
+          el('div', {}, el(canJump ? 'button' : 'div', { class: 'rank-est-no' + (canJump ? ' jump' : ''), type: 'button', onclick: canJump ? () => jumpToRank(w.id) : null },
             '推定 ', el('b', {}, est.toLocaleString('ja-JP') + '位'), el('span', { class: 'muted' }, '（全 ' + of.toLocaleString('ja-JP') + '人中）')),
-            el('div', { class: 'muted' }, f + '（' + FISH_JA[f] + '）・総供給量の ' + (amount / v.supply * 100).toFixed(3) + '%'))));
+            el('div', { class: 'muted' }, f + '（' + FISH_JA[f] + '）・総供給量の ' + (shownAmount / v.supply * 100).toFixed(3) + '%'))));
     }));
 
   // ① 保有者ランキング／② 預入ランキング
@@ -117,10 +123,11 @@ function renderRankingTab(targets) {
     const sub = rankListKind === 'holders'
       ? (r.split ? '手元 ' + fmtInt(r.wallet) + '・預入 ' + fmtInt(r.principal) + '・報酬 ' + fmtInt(r.reward) : '手元 ' + fmtInt(r.wallet) + (r.principal > 0 ? '・預入 ' + fmtInt(r.principal) + '・報酬 ' + fmtInt(r.reward) : '')) + '（' + r.share.toFixed(2) + '%）'
       : (r.rankName ? r.rankName + ' ' + pct(r.rate) : 'ランク外') + '・' + '元本 ' + fmtInt(r.principal) + '・報酬 ' + fmtInt(r.reward);
-    return el('li', { class: 'rank-row' + (r.split ? ' self' : ''), ...(r.split ? { 'data-split': r.split.id } : {}) },
+    const mine = r.split ? r.split.id : merged && r.address === selfAddr ? 'total' : ''; // 自分の行（枠全体を強調・ジャンプ先）
+    return el('li', { class: 'rank-row' + (mine ? ' self' : ''), ...(mine ? { 'data-split': mine } : {}) },
       el('div', { class: 'rank-line' },
         el('span', { class: 'rk-no' }, String(r.no)),
-        r.split ? null : rankChange(rankListKind, r.address, r.otherNo),
+        r.split ? null : rankChange(rankListKind, r.address, merged ? r.no : r.otherNo, !merged),
         rankListKind === 'holders' ? fishBadge(r.fish) : null,
         r.split ? el('span', { class: 'rk-name' }, r.split.name) : el('button', { class: 'cp', type: 'button', onclick: () => openNameDialog(r.address) }, nameOf(r.address)),
         el('span', { class: 'rk-total' }, fmtInt(r.total) + ' ' + sym)),
