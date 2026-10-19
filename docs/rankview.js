@@ -122,7 +122,7 @@ function renderRankingTab(targets) {
   $('rankList').hidden = isShare;
   if (isShare) {
     $('rankMore').hidden = true;
-    renderShare(rankListKind === 'rankShare' ? rankShareOf(depositors) : fishShareOf(holders, v), rankListKind);
+    renderShare(rankListKind === 'rankShare' ? rankShareOf(depositors, holders) : fishShareOf(holders, v), rankListKind);
     return;
   }
   const list = (rankListKind === 'holders' ? holders : depositors).filter((r) => !r.split || r.split.show);
@@ -173,21 +173,25 @@ $('rankMore').addEventListener('click', () => { rankShown += RANK_PAGE; refreshA
 // （dataviz の検証：#184f95,#256abf,#3987e5,#6da7ec,#9ec5f4,#cde2fb を --ordinal --mode dark --surface #0c1428 で合格。灰色 #6b7488 は地に 3.9:1）
 const SHARE_RAMP = ['#184f95', '#256abf', '#3987e5', '#6da7ec', '#9ec5f4', '#cde2fb'];
 const SHARE_GRAY = '#6b7488';
+const SHARE_GRAY_DARK = '#454e60'; // EARN の「預入なし」（地に 2.19:1。レベル外の灰色より暗い）
 const rampFor = (n) => Array.from({ length: n }, (_, i) => SHARE_RAMP[n === 1 ? SHARE_RAMP.length - 1 : Math.round(i * (SHARE_RAMP.length - 1) / (n - 1))]); // 低い→高い
 let shareSel = { rankShare: null, fishShare: null }; // 押して選んだ区分
 
-// ③ EARN：預けている人のランク（画面では「レベル」）別の人数（一覧と同じく、分配の行は Manager 分・Agent 分として数える）。上位のレベルから
+// ③ EARN：保有者全員の、ランク（画面では「レベル」）別の人数。預けていない人は「預入なし」（2026-10 ユーザー指示）
+//   一覧と同じく、分配の行は Manager 分・Agent 分として数える。上位のレベルから
 // APY：今日の時点で使うランク表（新ランク表の開始日より前なら旧、以降なら新）の、そのレベルの年利
-function rankShareOf(depositors) {
+function rankShareOf(depositors, holders) {
   const names = [];
   for (const r of [...ranks.new.ranks, ...ranks.old.ranks].reverse()) if (!names.includes(r.name)) names.push(r.name); // 上位から
   const OUT = 'レベル外';
   const colors = rampFor(names.length).reverse();
   const nowTable = Date.now() / 1000 >= Date.parse(ranks.new.startDate + 'T00:00:00+09:00') / 1000 ? ranks.new.ranks : ranks.old.ranks;
   const apyOf = (name) => { const r = nowTable.find((x) => x.name === name); return r ? pct(r.rate) : '—'; };
+  const NONE = '預入なし';
   const rows = [...names, OUT].map((name, i) => ({ key: name, label: name, color: name === OUT ? SHARE_GRAY : colors[i], apy: name === OUT ? '—' : apyOf(name), count: depositors.filter((p) => (p.rankName || OUT) === name).length }));
+  rows.push({ key: NONE, label: NONE, color: SHARE_GRAY_DARK, apy: '—', count: holders.filter((h) => !(h.principal > 0)).length });
   const total = rows.reduce((t, r) => t + r.count, 0);
-  return { unit: '人', total, center: total.toLocaleString('ja-JP') + '人', centerSub: '預けている人', rows: rows.filter((r) => r.count > 0 || r.key !== OUT).map((r) => ({ ...r, value: r.count, ratio: total ? r.count / total : 0 })) };
+  return { unit: '人', total, center: total.toLocaleString('ja-JP') + '人', centerSub: '保有者', rows: rows.filter((r) => r.count > 0 || (r.key !== OUT && r.key !== NONE)).map((r) => ({ ...r, value: r.count, ratio: total ? r.count / total : 0 })) };
 }
 
 // ④：手元＋元本（報酬は入れない）の分類別の枚数。運営は Community。分配の行は Manager 分・Agent 分として数える
@@ -256,8 +260,7 @@ function renderShare(d, kind) {
       tr.addEventListener('click', () => pick(r.key));
       return tr;
     }));
-  const note = kind === 'rankShare' ? '預けている人のレベル別の人数です。APY は今のレベルの年利です。' : '手元＋預入（元本）の枚数で分けています（報酬は入れていません）。運営のアドレスは ' + comName() + ' にまとめています。';
-  $('rankShareBox').replaceChildren(el('h2', {}, kind === 'rankShare' ? 'EARN の割合（人数）' : 'Tier の割合（枚数）'), el('div', { class: 'donut-wrap' }, svg), el('div', { class: 'scroll' }, table), el('p', { class: 'muted' }, note));
+  $('rankShareBox').replaceChildren(el('h2', {}, kind === 'rankShare' ? 'EARN の割合（人数）' : 'Tier の割合（枚数）'), el('div', { class: 'donut-wrap' }, svg), el('div', { class: 'scroll' }, table));
 }
 
 // ---- Community（運営）の表示：名前・画像・色（設定タブ。端末の中だけに保存 'communityStyle'）
