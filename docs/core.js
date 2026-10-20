@@ -345,7 +345,12 @@ async function renderDriveInfo() {
   $('forgetPassBtn').hidden = !pass;
 }
 
-document.querySelectorAll('.driveFetch').forEach((b) => b.addEventListener('click', () => fetchFromDrive()));
+document.querySelectorAll('.driveFetch').forEach((b) => b.addEventListener('click', () => {
+  // Agent アプリ：共有のファイルを読めているときは、ログインせずに確かめる（読めなければ次からログインして取得）
+  // ログイン画面はボタンを押したその場で開く必要があるので、どちらにするかは前回の結果（publicState）で決める
+  if (APP.dataScope === 'agent' && publicState === 'ok') checkPublic(true);
+  else fetchFromDrive();
+}));
 $('driveSignOutBtn').addEventListener('click', async () => {
   Drive.signOut();
   await delSetting('driveSlots');
@@ -591,5 +596,74 @@ const ESV = {
     if (h.init) await h.init();
     refreshAll();
     showStorageInfo();
+    if (APP.dataScope === 'agent') checkPublic(); // 共有にしたデータのファイルを確かめ、新しければ自動で取り込む（待たない）
   },
 };
+
+//--------------------------------------------------------------
+// 自動で最新にする（Agent アプリだけ。2026-10）
+// Agent 用のデータのファイルを「リンクを知っている全員」に共有しておくと、ログインなしで（API キーで）読める
+// アプリを開いたとき・ほかのアプリから戻ってきたとき（前の確認から5分以上）に、ファイルの目印（md5）を前回と比べ、
+// 変わっていれば取り込んで短く知らせる。合言葉を端末に保存していなければ入力画面が出る。読めないときは何も出さない
+// ファイルの ID は端末の中（driveSlots）にだけ持つ（プログラムには書かない）
+//--------------------------------------------------------------
+const PUBLIC_INTERVAL = 5 * 60 * 1000;
+let publicState = null;   // 'ok'（ログインなしで読めた）| 'ng'（読めなかった）| null（まだ確かめていない）
+let lastPublicCheck = 0;
+let skipMd5 = '';         // 合言葉の入力をやめたファイルの目印（このあいだは自動では聞き直さない）
+
+function toast(msg) {
+  let t = $('toast');
+  if (!t) { t = el('div', { id: 'toast', class: 'toast', role: 'status' }); document.body.appendChild(t); }
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toast.timer);
+  toast.timer = setTimeout(() => t.classList.remove('show'), 4000);
+}
+
+// manual：［最新データを取得］から呼んだとき（結果を必ず知らせる）
+async function checkPublic(manual = false) {
+  if (APP.dataScope !== 'agent' || driveBusy || !Drive.configured()) return;
+  const slots = await getSlots();
+  const file = slots.data;
+  if (!file) { if (manual) fetchFromDrive(); return; }
+  lastPublicCheck = Date.now();
+  driveBusy = true;
+  let msg = null;
+  try {
+    let meta;
+    try {
+      if (manual) $('status').textContent = '確認中…';
+      meta = await Drive.publicMeta(file.id);
+    } catch (err) {
+      publicState = 'ng';
+      if (manual) msg = '共有のファイルを読めませんでした。もう一度押すと、ログインして取得します。';
+      return;
+    }
+    publicState = 'ok';
+    if (data && file.md5 && meta.md5Checksum === file.md5) { if (manual) msg = 'データは最新です（作成：' + fmtShortJst(data.generatedAt) + '）'; return; }
+    if (!manual && meta.md5Checksum === skipMd5) return;
+    if (manual) $('status').textContent = '取得中…';
+    const text = await Drive.publicText(file.id);
+    lastImportKind = null;
+    const r = await importText(text, meta.name, 'drive');
+    if (lastImportKind !== 'data') { skipMd5 = meta.md5Checksum; return; } // 合言葉の入力をやめた
+    skipMd5 = '';
+    slots.data = { id: file.id, name: meta.name, md5: meta.md5Checksum };
+    await putSetting('driveSlots', slots);
+    msg = /^データは最新/.test(r || '') ? (manual ? r : null) : '新しいデータを読み込みました（作成：' + fmtShortJst(data.generatedAt) + '）';
+  } catch (err) {
+    if (manual) msg = err.message;
+  } finally {
+    driveBusy = false;
+    renderDriveInfo();
+    showStatus();
+    if (msg) toast(msg);
+  }
+}
+
+if (APP.dataScope === 'agent') {
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && Date.now() - lastPublicCheck > PUBLIC_INTERVAL) checkPublic();
+  });
+}

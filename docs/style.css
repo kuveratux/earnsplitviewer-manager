@@ -434,3 +434,6 @@ h2.sec-help { display: flex; align-items: center; gap: 8px; }
 .help-h { font-weight: 700; font-size: 14px; }
 .help-item p { margin: 4px 0 0; font-size: 13px; line-height: 1.6; }
 .help-item p.help-empty { color: var(--muted); }
+/* 2026-10：短い知らせ（自動で新しいデータを読み込んだときなど）。タブの少し上に出して、4秒で消す */
+.toast { position: fixed; left: 50%; width: max-content; bottom: calc(84px + env(safe-area-inset-bottom)); transform: translate(-50%, 12px); max-width: min(92vw, 420px); padding: 10px 14px; border-radius: 10px; background: rgba(20, 32, 60, .96); border: 1px solid var(--edge, #3a4a6a); color: var(--text); font-size: 13px; box-shadow: 0 6px 20px rgba(0, 0, 0, .45); opacity: 0; pointer-events: none; transition: opacity .25s, transform .25s; z-index: 50; }
+.toast.show { opacity: 1; transform: translate(-50%, 0); }

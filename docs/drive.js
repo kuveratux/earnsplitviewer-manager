@@ -123,10 +123,26 @@ const Drive = (() => {
     return { meta, text };
   }
 
+  // ログインなしで読む（2026-10）：「リンクを知っている全員」に共有したファイルだけ読める。API キー（kuveratux.github.io からだけ使える）を使う
+  // 共有になっていない・ファイルがない・通信できないときは例外（呼ぶ側は静かにやめる）
+  async function publicApi(url) {
+    const res = await fetch(url + '&key=' + encodeURIComponent(GOOGLE.apiKey));
+    if (!res.ok) throw Object.assign(new Error('共有のファイルを読めませんでした（HTTP ' + res.status + '）'), { status: res.status });
+    return res;
+  }
+  const fileUrl = (fileId) => 'https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(fileId);
+  // ファイルの情報（md5Checksum は中身が変わると変わる目印）
+  async function publicMeta(fileId) {
+    return (await publicApi(fileUrl(fileId) + '?fields=id,name,modifiedTime,md5Checksum&supportsAllDrives=true')).json();
+  }
+  async function publicText(fileId) {
+    return (await publicApi(fileUrl(fileId) + '?alt=media&supportsAllDrives=true')).text();
+  }
+
   function signOut() {
     if (token && window.google) google.accounts.oauth2.revoke(token.value, () => {});
     token = null;
   }
 
-  return { configured, ensureLoaded, authorizeNow, preload, pick, download, signOut };
+  return { configured, ensureLoaded, authorizeNow, preload, pick, download, publicMeta, publicText, signOut };
 })();
