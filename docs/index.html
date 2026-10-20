@@ -111,7 +111,7 @@
       <div id="rewardNote" class="note" hidden></div>
       <div id="rewardBody">
         <div id="rewardCards"></div>
-        <h2 class="sec">運用シミュレーション</h2>
+        <h2 class="sec sec-help">運用シミュレーション<button type="button" class="help-btn" data-help="reward" aria-label="運用シミュレーションのヘルプ">?</button></h2>
         <div class="chart-controls">
           <div id="modeSeg" class="seg" role="group" aria-label="計算方法">
             <button type="button" data-mode="simple" aria-pressed="true">単利</button>
@@ -164,7 +164,7 @@
           <div id="heroPrice" class="muted hero-price"></div>
           <div id="assetList" class="hero-folds"></div>
         </div>
-        <h2 class="sec">資産シミュレーション</h2>
+        <h2 class="sec sec-help">資産シミュレーション<button type="button" class="help-btn" data-help="asset" aria-label="資産シミュレーションのヘルプ">?</button></h2>
         <div class="card">
           <p id="assetPrice" class="muted"></p>
           <label class="trial-row">試算価格：<input id="trialInput" type="number" inputmode="decimal" min="0" step="any">円</label>
@@ -259,6 +259,16 @@
   <button role="tab" data-tab="tx" aria-selected="false"><svg class="tab-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h12M8 12h12M8 18h12"/><circle cx="4" cy="6" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="4" cy="18" r="1"/></svg><span>取引履歴</span></button>
   <button role="tab" data-tab="settings" aria-selected="false"><svg class="tab-ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg><span>設定</span></button>
 </nav>
+
+<dialog id="helpDlg" class="help-dlg">
+  <form method="dialog">
+    <div class="help-head">
+      <h2 id="helpTitle"></h2>
+      <button value="close" class="help-close" aria-label="閉じる">×</button>
+    </div>
+    <div id="helpBody" class="help-body"></div>
+  </form>
+</dialog>
 
 <dialog id="nameDlg">
   <form method="dialog">

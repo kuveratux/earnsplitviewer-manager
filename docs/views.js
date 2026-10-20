@@ -461,3 +461,37 @@ $('whoSel').addEventListener('change', () => { rewardWho = $('whoSel').value; re
 let rewardResize = null;
 window.addEventListener('resize', () => { clearTimeout(rewardResize); rewardResize = setTimeout(() => { if (!$('tab-reward').hidden) refreshAll(); }, 200); });
 document.querySelector('[data-tab=reward]').addEventListener('click', () => setTimeout(refreshAll, 0));
+
+//--------------------------------------------------------------
+// ヘルプ（資産シミュレーション・運用シミュレーションの見出しの横の丸付き ?。押すと画面の上に出す。2026-10）
+// 入力のしかた・切り替え・空欄にしたときの動きを書く。Manager だけにある「対象」の選択は Manager のときだけ出す
+//--------------------------------------------------------------
+function helpItems(kind) {
+  const mgr = APP.id === 'manager';
+  if (kind === 'asset') return ['資産シミュレーション', [
+    ['現在価格', '取得エクセルの設定シートで決めた1枚あたりの価格です。データに入っていないときは、現在価格の列が「—」になります。'],
+    ['試算価格', '価格が変わったときの資産額・含み損益・報酬を見るための1枚あたりの価格（円）です。入れた値はこの端末に保存されます。', '空欄のとき：例の価格（15 円）で計算します。'],
+    ['日・週・月・年', '報酬の行を、その期間あたりの目安に切り替えます。今の EARN Tier の年利で計算します（月は1年の12分の1）。'],
+    ['含み損益', '資産額から購入金額の合計を引いたものです。購入の記録がないときは「—」になります。'],
+    ...(mgr ? [['対象', '合算・Manager・Agent のどれで計算するかを選びます。']] : []),
+    ['目のマーク', '押すと、金額・％・枚数を「＊＊＊」で隠します。'],
+  ]];
+  return ['運用シミュレーション', [
+    ['単利・複利', '単利は、報酬を元本に足さずに計算します。複利は、毎日の報酬を足した枚数で次の日の報酬を計算します。'],
+    ['1年・3年・5年・10年', 'グラフと「○年後までの推移」の期間を切り替えます。'],
+    ['TUX価格', '引き出す枚数を計算するときの1枚あたりの価格（円）です。入れた値はこの端末に保存されます。', '空欄のとき：現在価格を使います（現在価格と同じ値を入れたときも同じです）。'],
+    ['年間希望報酬', '1年間に受け取りたい金額（円）です。入れると、必要な枚数を計算し、引き出しながら運用した場合の推移を出します。入れた値はこの端末に保存されます。', '空欄のとき：引き出さずに運用した場合の推移を出します。'],
+    ['引出し（日・週・月・年）', '引き出すタイミングです。日は毎日、週は7日ごと、月は1か月ごと、年は1年ごとに、年間の枚数を回数で割って引き出します。'],
+    ...(mgr ? [['対象', '合算・Manager・Agent のどれで計算するかを選びます（「保有枚数の表示」で2つ以上選んでいるときに出ます）。']] : []),
+    ['計算について', '今の EARN Tier の年利で計算した目安です。引き出して枚数が減っても EARN Tier は下げずに計算します。'],
+  ]];
+}
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('.help-btn');
+  if (!b) return;
+  const [title, items] = helpItems(b.dataset.help);
+  $('helpTitle').textContent = title;
+  $('helpBody').replaceChildren(...items.map(([h, text, empty]) => el('div', { class: 'help-item' },
+    el('div', { class: 'help-h' }, h), el('p', {}, text), empty ? el('p', { class: 'help-empty' }, empty) : null)));
+  $('helpDlg').showModal();
+});

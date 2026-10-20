@@ -421,3 +421,16 @@ table.grid.sim td.n { text-align: center; }
 .recent-route { font-size: 13px; overflow-wrap: anywhere; }
 .txlist li.mine .recent-route { font-weight: 600; }
 .recent-more { text-align: center; margin: 10px 0; }
+/* 2026-10：シミュレーションの見出しの横のヘルプ（丸付き ?）と、その内容（画面の上に出す） */
+h2.sec-help { display: flex; align-items: center; gap: 8px; }
+.help-btn { width: 22px; height: 22px; min-width: 0; padding: 0; border-radius: 50%; border: 1.5px solid currentColor; background: transparent; color: var(--muted); font-size: 13px; font-weight: 700; line-height: 1; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
+.help-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.help-head h2 { margin: 0; flex: 1; }
+.help-close { width: 28px; height: 28px; min-width: 0; padding: 0; border-radius: 50%; border: 1.5px solid currentColor; background: transparent; color: var(--muted); font-size: 18px; line-height: 1; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
+.help-body { max-height: 72vh; }
+.help-body { max-height: 65vh; overflow-y: auto; }
+.help-item { padding: 8px 0; border-bottom: 1px solid var(--line); }
+.help-item:last-child { border-bottom: 0; }
+.help-h { font-weight: 700; font-size: 14px; }
+.help-item p { margin: 4px 0 0; font-size: 13px; line-height: 1.6; }
+.help-item p.help-empty { color: var(--muted); }
