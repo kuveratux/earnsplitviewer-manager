@@ -201,6 +201,23 @@
         <button id="forgetPassBtn" hidden>保存した合言葉を削除</button>
       </div>
     </div>
+    <!-- Agent の招待（2026-10）：Agent 用のファイルの共有のリンクから、招待リンク・招待コード・QR コードを作る -->
+    <div class="card">
+      <h2>Agent の招待</h2>
+      <p class="muted">Agent 用のデータのファイル（esv_agent_latest.json）を、ドライブで「リンクを知っている全員」（閲覧者）に共有し、［リンクをコピー］で取ったリンクを貼ってください。リンクはこの端末の中にだけ覚えます。合言葉は招待に入らないので、別の手段で伝えてください。</p>
+      <label class="field">Agent 用のファイルの共有のリンク<input id="invSrc" autocomplete="off" spellcheck="false" autocapitalize="off" placeholder="https://drive.google.com/file/d/…"></label>
+      <p id="invCheck" class="muted"></p>
+      <div id="invOut" hidden>
+        <div id="invQr" class="inv-qr" aria-label="招待の QR コード"></div>
+        <div class="inv-label">招待リンク</div>
+        <p id="invLink" class="mono invite-code"></p>
+        <div class="row"><button id="invCopyLink" type="button" class="primary">リンクをコピー</button></div>
+        <div class="inv-label">招待コード（iPhone でホーム画面のアプリに入れるとき）</div>
+        <p id="invCode" class="mono invite-code"></p>
+        <div class="row"><button id="invCopyCode" type="button">コードをコピー</button></div>
+      </div>
+      <div class="row"><button id="invForget" type="button" hidden>この端末から消す</button></div>
+    </div>
     <div class="card">
       <h2>アドレス一覧</h2>
       <p class="muted">取引に出てきたアドレスの一覧です。名前を付けると、取引一覧の相手先にも表示されます（この端末だけに保存）。</p>
@@ -306,6 +323,8 @@
 <script src="views.js"></script>
 <script src="book.js"></script>
 <script src="rankview.js"></script>
+<script src="qrcode.js"></script>
+<script src="invite.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

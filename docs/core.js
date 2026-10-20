@@ -333,6 +333,7 @@ function slotTimes(key) {
 }
 
 async function renderDriveInfo() {
+  if (APP.dataScope === 'agent') { renderRecvInfo(); return; } // Agent は「データの受け取り」の欄
   const ok = Drive.configured();
   document.querySelectorAll('.driveOnly').forEach((e) => { e.hidden = !ok; });
   if (!ok) return;
@@ -351,7 +352,7 @@ document.querySelectorAll('.driveFetch').forEach((b) => b.addEventListener('clic
   if (APP.dataScope === 'agent' && publicState === 'ok') checkPublic(true);
   else fetchFromDrive();
 }));
-$('driveSignOutBtn').addEventListener('click', async () => {
+if ($('driveSignOutBtn')) $('driveSignOutBtn').addEventListener('click', async () => {
   Drive.signOut();
   await delSetting('driveSlots');
   await delSetting('driveFiles');
@@ -397,13 +398,14 @@ async function showStorageInfo() {
   const persisted = await navigator.storage.persisted() || await navigator.storage.persist();
   $('storageInfo').textContent = persisted
     ? '保存の持続化：有効（容量不足でも自動で消されにくくなっています）'
-    : '保存の持続化：未許可（データは「最新データを取得」でいつでも取り直せます）';
+    : '保存の持続化：未許可（データは' + FETCH_HINT() + 'でいつでも取り直せます）';
 }
 
 let installEvent = null;
 window.addEventListener('beforeinstallprompt', (e) => {
   e.preventDefault();
   installEvent = e;
+  if (typeof onInstallReady === 'function') onInstallReady();
   $('installBtn').hidden = false;
 });
 $('installBtn').addEventListener('click', async () => {
@@ -596,7 +598,8 @@ const ESV = {
     if (h.init) await h.init();
     refreshAll();
     showStorageInfo();
-    if (APP.dataScope === 'agent') checkPublic(); // 共有にしたデータのファイルを確かめ、新しければ自動で取り込む（待たない）
+    // Agent：招待リンクで開いたときは受け取る。そうでなければ、共有にしたデータのファイルを確かめ、新しければ自動で取り込む（待たない）
+    if (APP.dataScope === 'agent') startAgentReceive();
   },
 };
 
@@ -626,7 +629,7 @@ async function checkPublic(manual = false) {
   if (APP.dataScope !== 'agent' || driveBusy || !Drive.configured()) return;
   const slots = await getSlots();
   const file = slots.data;
-  if (!file) { if (manual) fetchFromDrive(); return; }
+  if (!file) { if (manual) toast('受け取り先が決まっていません。招待リンクを開くか、［招待コードを入れる］から始めてください。'); return; }
   lastPublicCheck = Date.now();
   driveBusy = true;
   let msg = null;
@@ -637,10 +640,12 @@ async function checkPublic(manual = false) {
       meta = await Drive.publicMeta(file.id);
     } catch (err) {
       publicState = 'ng';
-      if (manual) msg = '共有のファイルを読めませんでした。もう一度押すと、ログインして取得します。';
+      if (manual) msg = '受け取れませんでした。通信の状態を確かめるか、Manager に共有の設定を確かめてもらってください。';
       return;
     }
     publicState = 'ok';
+    file.checkedAt = new Date().toISOString();
+    await putSetting('driveSlots', slots);
     if (data && file.md5 && meta.md5Checksum === file.md5) { if (manual) msg = 'データは最新です（作成：' + fmtShortJst(data.generatedAt) + '）'; return; }
     if (!manual && meta.md5Checksum === skipMd5) return;
     if (manual) $('status').textContent = '取得中…';
@@ -649,7 +654,7 @@ async function checkPublic(manual = false) {
     const r = await importText(text, meta.name, 'drive');
     if (lastImportKind !== 'data') { skipMd5 = meta.md5Checksum; return; } // 合言葉の入力をやめた
     skipMd5 = '';
-    slots.data = { id: file.id, name: meta.name, md5: meta.md5Checksum };
+    slots.data = { id: file.id, name: meta.name, md5: meta.md5Checksum, checkedAt: file.checkedAt };
     await putSetting('driveSlots', slots);
     msg = /^データは最新/.test(r || '') ? (manual ? r : null) : '新しいデータを読み込みました（作成：' + fmtShortJst(data.generatedAt) + '）';
   } catch (err) {
@@ -666,4 +671,190 @@ if (APP.dataScope === 'agent') {
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible' && Date.now() - lastPublicCheck > PUBLIC_INTERVAL) checkPublic();
   });
+}
+
+// 「最新データを取得」の案内（Agent はボタンの名前が違う）
+const FETCH_HINT = () => (APP.dataScope === 'agent' ? '「設定」の［今すぐ確認］' : '「設定」の［最新データを取得］');
+
+//--------------------------------------------------------------
+// 招待（Agent アプリだけ。2026-10）
+// 招待リンク：https://kuveratux.github.io/earnsplitviewer-agent/#invite=<招待コード>（# の後ろはサーバーに送られない）
+// 招待コード：Agent 用のデータのファイルの ID（ドライブの共有のリンクから取り出したもの）。合言葉は入れない（別の手段で伝える）
+// 受け取ったファイルの ID は端末の中（driveSlots）にだけ持つ。プログラムには書かない
+//--------------------------------------------------------------
+// 招待コード・招待リンク・ドライブの共有のリンクのどれを貼られても、ファイルの ID を取り出す
+function inviteIdOf(text) {
+  const s = String(text || '').trim();
+  const m = s.match(/[#&?]invite=([A-Za-z0-9_-]+)/) || s.match(/\/d\/([A-Za-z0-9_-]+)/) || s.match(/[?&]id=([A-Za-z0-9_-]+)/) || s.match(/^([A-Za-z0-9_-]+)$/);
+  return m && m[1].length >= 20 ? m[1] : null;
+}
+// 招待リンクで開いたときの招待コード。読んだらアドレス欄からすぐ消す（履歴やブックマークに残さない）
+function takeInviteFromUrl() {
+  const id = inviteIdOf(location.hash);
+  if (/invite=/.test(location.hash)) history.replaceState(null, '', location.pathname + location.search);
+  return id;
+}
+const isStandalone = () => (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
+
+// 招待を受け取る：ログインなしで読み、合言葉で開けたら、そのファイルを覚える（開けなければ何も変えない）
+async function acceptInvite(id) {
+  if (driveBusy) return;
+  const slots = await getSlots();
+  if (slots.data && slots.data.id === id) { checkPublic(true); return; } // 同じ招待をもう一度開いた
+  driveBusy = true;
+  let ok = false;
+  try {
+    $('status').textContent = '受け取り中…';
+    // 読めるかを先に確かめてから、置き換えてよいかを聞く
+    let meta;
+    try { meta = await Drive.publicMeta(id); } catch {
+      alert('招待のデータを受け取れませんでした。招待コード（リンク）が正しいか、通信の状態を確かめてください。続くときは、Manager に共有の設定を確かめてもらってください。');
+      return;
+    }
+    if ((data || slots.data) && !confirm('招待を受け取りました。今のデータを、招待されたデータに置き換えますか？')) return;
+    const text = await Drive.publicText(id);
+    lastImportKind = null;
+    await importText(text, meta.name, 'invite');
+    if (lastImportKind !== 'data') return; // 合言葉の入力をやめた
+    slots.data = { id, name: meta.name, md5: meta.md5Checksum, checkedAt: new Date().toISOString() };
+    await putSetting('driveSlots', slots);
+    publicState = 'ok';
+    ok = true;
+  } catch (err) {
+    alert('受け取れませんでした（' + err.message + '）');
+  } finally {
+    driveBusy = false;
+    renderDriveInfo();
+    showStatus();
+  }
+  if (!ok) return;
+  if (isStandalone()) { toast('データを受け取りました（作成：' + fmtShortJst(data.generatedAt) + '）'); return; }
+  // ブラウザで開いたとき：ホーム画面に追加したあとの案内（iPhone は追加したアプリに招待コードを入れ直す）
+  $('inviteDoneCode').textContent = id;
+  $('inviteDoneDlg').showModal();
+}
+
+// 「データの受け取り」の欄
+async function renderRecvInfo() {
+  if (!$('recvInfo')) return;
+  const slots = await getSlots();
+  const f = slots.data;
+  const rows = [
+    ['受け取り先', f ? '設定済み' + (f.name ? '（' + f.name + '）' : '') : '未設定（招待リンクを開くか、招待コードを入れてください）'],
+    ['最後に確かめた日時', f && f.checkedAt ? fmtShortJst(f.checkedAt) : '—'],
+    ['データの作成日時', data ? fmtShortJst(data.generatedAt) : '—'],
+  ];
+  if (publicState === 'ng') rows.push(['状態', '受け取れませんでした（共有の設定を Manager に確かめてもらってください）']);
+  $('recvInfo').replaceChildren(...kvRows(rows));
+  $('forgetPassBtn').hidden = !(await getSetting('passphrase'));
+}
+
+if (APP.dataScope === 'agent') {
+  $('recvCheckBtn').addEventListener('click', () => checkPublic(true));
+  $('inviteCodeBtn').addEventListener('click', () => { $('codeInput').value = ''; $('codeDlg').showModal(); });
+  $('codeDlg').addEventListener('close', () => {
+    if ($('codeDlg').returnValue !== 'ok') return;
+    const id = inviteIdOf($('codeInput').value);
+    if (!id) { alert('招待コードの形が正しくありません。Manager から受け取ったコード（またはリンク）をそのまま貼り付けてください。'); return; }
+    acceptInvite(id);
+  });
+  $('inviteCopyBtn').addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText($('inviteDoneCode').textContent); toast('招待コードをコピーしました'); }
+    catch { toast('コピーできませんでした。コードを長押ししてコピーしてください'); }
+  });
+  // 起動中に招待リンクを開き直したとき（同じページで # だけ変わる）
+  window.addEventListener('hashchange', () => { const inv = takeInviteFromUrl(); if (inv) openInvite(inv); });
+}
+
+//--------------------------------------------------------------
+// 招待リンクをブラウザで開いたときの流れ（Agent。2026-10）
+// ・ホーム画面のアプリ（standalone）で開いた → そのまま受け取る
+// ・LINE などのアプリの中のブラウザ → Safari／Chrome で開き直す案内（インストールできないため）
+// ・iPhone の Safari → 受け取らずに、ホーム画面に追加する手順と［コードをコピー］（ホーム画面のアプリは Safari と別に情報を持つため）
+// ・Android の Chrome など → 招待を端末に覚えて（'pendingInvite'）、まずインストール。インストールしたアプリを開くと受け取る
+//   （インストールしたアプリはブラウザと情報を共有する。Chrome がインストールの画面を出せないときは、メニューからの手順を出す）
+// どれも［このまま使う］で、ブラウザのまま受け取ることもできる
+//--------------------------------------------------------------
+const UA = navigator.userAgent || '';
+const isIOS = () => /iPhone|iPad|iPod/.test(UA) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const isAndroid = () => /Android/.test(UA);
+const isInAppBrowser = () => /\bLine\/|FBAN|FBAV|Instagram|MicroMessenger|; wv\)/i.test(UA);
+const inviteLinkOf = (id) => location.origin + location.pathname + '#invite=' + id;
+const SHARE_ICON = '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" style="vertical-align:-3px"><path d="M12 3v12M8 7l4-4 4 4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M6 11H5v10h14V11h-1" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>';
+
+async function startAgentReceive() {
+  const inv = takeInviteFromUrl();
+  if (inv) { openInvite(inv); return; }
+  // インストールしたアプリを初めて開いた（ブラウザで覚えた招待がある）
+  const pending = await getSetting('pendingInvite');
+  if (pending && isStandalone()) { await delSetting('pendingInvite'); acceptInvite(pending); return; }
+  checkPublic();
+}
+
+function openInvite(id) {
+  if (isStandalone()) { acceptInvite(id); return; }
+  if (isInAppBrowser()) { showOnboard('inapp', id); return; }
+  if (isIOS()) { showOnboard('ios', id); return; }
+  putSetting('pendingInvite', id).catch(() => {});
+  showOnboard('install', id);
+}
+
+let onbKind = '', onbId = '';
+function onbStep(n, ...body) { return el('div', { class: 'onb-step' }, el('span', { class: 'onb-num' }, String(n)), el('div', {}, ...body)); }
+function showOnboard(kind, id) {
+  onbKind = kind; onbId = id;
+  const btn = (text, primary, onclick) => { const b = el('button', { type: 'button', class: primary ? 'primary' : '' }, text); b.addEventListener('click', onclick); return b; };
+  const useHere = btn('このまま使う（ホーム画面に追加しない）', false, async () => { $('onbDlg').close(); await delSetting('pendingInvite'); acceptInvite(id); });
+  const copy = (text, done) => async () => { try { await navigator.clipboard.writeText(text); toast(done); } catch { toast('コピーできませんでした'); } };
+  let title, body, btns;
+  if (kind === 'inapp') {
+    title = 'ブラウザで開き直してください';
+    body = [el('p', {}, 'LINE などのアプリの中のブラウザでは、アプリとしてインストール（ホーム画面に追加）ができません。'),
+      onbStep(1, '画面のメニュー（… や ⋮）から「ブラウザで開く」「Safari で開く」「Chrome で開く」などを選んでください。'),
+      onbStep(2, 'メニューにないときは、［リンクをコピー］を押して、Safari（Android は Chrome）のアドレス欄に貼り付けて開いてください。')];
+    btns = [btn('リンクをコピー', true, copy(inviteLinkOf(id), '招待リンクをコピーしました')), useHere];
+  } else if (kind === 'ios') {
+    title = 'ホーム画面に追加して使います';
+    const sh = el('span', {}); sh.innerHTML = SHARE_ICON; // 固定の図形だけ
+    body = [onbStep(1, '［コードをコピー］を押します。'),
+      onbStep(2, '画面下（iPad は右上）の共有ボタン ', sh, ' を押し、［ホーム画面に追加］→［追加］を押します。'),
+      onbStep(3, 'ホーム画面の「ESV Agent」を開き、［コピーした招待コードで受け取る］を押して、合言葉を入れます。'),
+      el('p', { class: 'muted' }, 'iPhone では、ホーム画面に追加したアプリは Safari と別に情報を持つため、招待コードを入れて受け取ります。'),
+      el('p', { class: 'mono invite-code' }, id)];
+    btns = [btn('コードをコピー', true, copy(id, '招待コードをコピーしました')), useHere];
+  } else {
+    title = 'まずアプリをインストールしてください';
+    const ready = !!installEvent;
+    body = [onbStep(1, ready ? '［アプリとしてインストール］を押し、表示された画面で［インストール］を押します。' : '画面右上のメニュー（⋮）から［アプリをインストール］（または［ホーム画面に追加］）を押します。'),
+      onbStep(2, 'ホーム画面の「ESV Agent」を開きます。招待は自動で受け取るので、合言葉を入れれば使い始められます。'),
+      el('p', { id: 'onbInstalled', class: 'note', hidden: '' }, 'インストールしました。ホーム画面の「ESV Agent」を開いてください（このページは閉じてかまいません）。')];
+    btns = [...(ready ? [btn('アプリとしてインストール', true, async () => {
+      if (!installEvent) return;
+      installEvent.prompt();
+      const r = await installEvent.userChoice;
+      installEvent = null;
+      if ($('installBtn')) $('installBtn').hidden = true;
+      if (r && r.outcome === 'accepted') $('onbInstalled').hidden = false;
+    })] : []), useHere];
+  }
+  $('onbTitle').textContent = title;
+  $('onbBody').replaceChildren(...body);
+  $('onbBtns').replaceChildren(...btns, btn('閉じる', false, () => $('onbDlg').close()));
+  if (!$('onbDlg').open) $('onbDlg').showModal();
+}
+// Chrome がインストールの画面を出せるようになった（案内を出したあとでも、ボタンを出す）
+function onInstallReady() { if (APP.dataScope === 'agent' && $('onbDlg') && $('onbDlg').open && onbKind === 'install') showOnboard('install', onbId); }
+window.addEventListener('appinstalled', () => { if ($('onbInstalled')) $('onbInstalled').hidden = false; });
+
+// データがない画面の［コピーした招待コードで受け取る］（iPhone でホーム画面に追加したあと）・［招待コードを入れる］
+if (APP.dataScope === 'agent') {
+  document.querySelectorAll('.pasteInviteBtn').forEach((b) => b.addEventListener('click', async () => {
+    let text = '';
+    try { text = await navigator.clipboard.readText(); } catch { /* 読めない端末は入力の画面へ */ }
+    const id = inviteIdOf(text);
+    if (id) { acceptInvite(id); return; }
+    $('codeInput').value = '';
+    $('codeDlg').showModal();
+  }));
+  document.querySelectorAll('.openCodeBtn').forEach((b) => b.addEventListener('click', () => { $('codeInput').value = ''; $('codeDlg').showModal(); }));
 }

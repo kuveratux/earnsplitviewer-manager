@@ -33,6 +33,7 @@ const SHELL_FILES = [
   'icons/icon-192.png',
   'icons/icon-512.png',
   'icons/icon-512-maskable.png',
+  ...(self.ESV_APP.extraFiles || []), // アプリごとのファイル（app-config.js。Manager の招待など）
 ];
 
 // 新しい版のファイルは、公開サイトの一時保管（最大 10 分）を通さずに取る（URL に版の印を付ける。保管庫からは印を無視して探す）

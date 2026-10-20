@@ -8,4 +8,5 @@ self.ESV_APP = {
   lsAppearance: 'esvm-appearance', // localStorage（表示と配色の写し）
   cachePrefix: 'esvm-shell-',      // Service Worker の保管庫（この接頭辞のものだけ削除する）
   dataScope: 'manager',            // 読み込めるデータファイル（全量）
+  extraFiles: ['qrcode.js', 'invite.js'], // このアプリだけのファイル（Service Worker の保管に足す。Agent の招待）
 };

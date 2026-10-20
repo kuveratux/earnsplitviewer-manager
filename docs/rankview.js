@@ -64,7 +64,7 @@ function renderRankingTab(targets) {
   const ok = rg && rg.source && ranks.old && ranks.new;
   $('rankNote').hidden = !!ok;
   $('rankNote').textContent = !rg ? 'このデータには保有者ランキングが入っていません。'
-    : 'ランク表が読み込まれていないため、ランキングを計算できません。「設定」の［最新データを取得］で、新しいデータを読み込んでください。';
+    : 'ランク表が読み込まれていないため、ランキングを計算できません。' + FETCH_HINT() + 'で、新しいデータを読み込んでください。';
   $('rankBody').hidden = !ok;
   if (!ok) return;
 

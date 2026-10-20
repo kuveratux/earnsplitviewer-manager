@@ -437,3 +437,16 @@ h2.sec-help { display: flex; align-items: center; gap: 8px; }
 /* 2026-10：短い知らせ（自動で新しいデータを読み込んだときなど）。タブの少し上に出して、4秒で消す */
 .toast { position: fixed; left: 50%; width: max-content; bottom: calc(84px + env(safe-area-inset-bottom)); transform: translate(-50%, 12px); max-width: min(92vw, 420px); padding: 10px 14px; border-radius: 10px; background: rgba(20, 32, 60, .96); border: 1px solid var(--edge, #3a4a6a); color: var(--text); font-size: 13px; box-shadow: 0 6px 20px rgba(0, 0, 0, .45); opacity: 0; pointer-events: none; transition: opacity .25s, transform .25s; z-index: 50; }
 .toast.show { opacity: 1; transform: translate(-50%, 0); }
+/* 2026-10：Agent の「データの受け取り」と招待コード */
+.recv-info { margin-bottom: 8px; }
+.invite-code { font-size: 13px; overflow-wrap: anywhere; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; user-select: all; -webkit-user-select: all; }
+/* 2026-10：Manager の「Agent の招待」。QR コードは白地に黒（読み取りやすく） */
+.inv-qr { width: 200px; margin: 8px auto 12px; background: #fff; border-radius: 8px; padding: 4px; }
+.inv-qr svg { display: block; width: 100%; height: auto; }
+.inv-label { font-size: 13px; color: var(--muted); margin-top: 8px; }
+/* 2026-10：招待リンクをブラウザで開いたときの案内 */
+.onb-body p { margin: 6px 0; font-size: 14px; line-height: 1.6; }
+.onb-step { display: flex; gap: 10px; align-items: flex-start; margin: 10px 0; font-size: 14px; line-height: 1.6; }
+.onb-num { flex: 0 0 24px; height: 24px; border-radius: 50%; background: var(--accent); color: #fff; font-weight: 700; font-size: 13px; display: inline-flex; align-items: center; justify-content: center; margin-top: 1px; }
+.onb-btns { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+.onb-btns button { width: 100%; }
