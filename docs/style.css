@@ -450,3 +450,23 @@ h2.sec-help { display: flex; align-items: center; gap: 8px; }
 .onb-num { flex: 0 0 24px; height: 24px; border-radius: 50%; background: var(--accent); color: #fff; font-weight: 700; font-size: 13px; display: inline-flex; align-items: center; justify-content: center; margin-top: 1px; }
 .onb-btns { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
 .onb-btns button { width: 100%; }
+/* 2.1：資産シミュレーション：期間のボタンは縮めない（EARN Tier の表示のほうを詰める） */
+.sim-ctl-in .seg { flex-shrink: 0; }
+.sim-ctl-in .rate-now { min-width: 0; text-align: right; }
+/* 2.1：EARN Tier のアイコン（宝石のバッジ）。EARN の一覧はアドレスと枚数の間にアイコン＋名前 */
+.rk-tier { display: inline-flex; align-items: center; gap: 3px; font-size: 12px; color: var(--muted); white-space: nowrap; }
+.rk-tier img { width: 16px; height: 16px; }
+.tier-inline { display: inline-flex; align-items: center; gap: 3px; flex-wrap: wrap; justify-content: flex-end; }
+.tier-icon { width: 16px; height: 16px; vertical-align: -3px; margin-right: 3px; }
+.tier-inline .tier-icon { margin-right: 0; }
+.tier-nb { display: inline-flex; align-items: center; gap: 3px; white-space: nowrap; }
+/* 資産シミュレーションの EARN Tier は1行で（期間のボタンを少し詰めて、文字を小さめに） */
+.sim-ctl-in .rate-now { font-size: 12px; white-space: nowrap; }
+.sim-ctl-in .rate-now .tier-inline { flex-wrap: nowrap; }
+.sim-ctl-in .seg button { padding: 4px 10px; }
+@media (max-width: 380px) { .sim-ctl-in .seg button { padding: 4px 7px; } .sim-ctl-in .rate-now { font-size: 11px; } .sim-ctl-in { gap: 4px; } }
+/* 2.1：Agent の「インポートデータ」（見出しの右に［今すぐ確認］、招待コードは「その他」の中）・iPhone の案内の小見出し */
+.card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+.card-head h2 { margin: 0; }
+.recv-more { margin-top: 10px; }
+.onb-h { font-size: 14px; margin: 14px 0 6px; }

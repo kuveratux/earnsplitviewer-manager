@@ -123,16 +123,10 @@ function renderRewardTab(who, showTotal = true, opts = {}) {
   const now = Math.floor(Date.now() / 1000);
   const rk = { old: ranks.old, new: ranks.new };
   const s = Reward.settled(split, rk, now);
-  const rankText = (r, rate) => hid(r ? r.name + ' ' + pct(rate) : 'ランク外 0%');
 
   // 保有枚数（預入＋報酬）のカード。数字は資産タブの資産額と同じ大きさ。内訳は折りたたみ（起動時は開く）
   const multi = APP.id === 'manager'; // Manager は対象名を添える
   const rewardList = opts.rewardWho || who;
-  const newStart = Date.parse(ranks.new.startDate + 'T00:00:00+09:00') / 1000;
-  // 旧ランク表の最終日・新ランク表の開始日（内訳の見出しを短くするため、月/日だけ。年は預入日時でわかる）
-  const md = (unix) => { const d = new Date((unix + 9 * 3600) * 1000); return (d.getUTCMonth() + 1) + '/' + d.getUTCDate(); };
-  const oldLast = md(newStart - Reward.DAY);
-  const newFirst = md(newStart);
   $('rewardCards').replaceChildren(...(rewardList.length ? [] : [el('div', { class: 'card' }, el('p', { class: 'muted' }, '表示する対象がありません。「設定」の「保有枚数の表示」で選んでください。'))]), ...rewardList.map((w, wi) => {
     const reward = w.share * s.factor;
     const rows = [
@@ -140,9 +134,9 @@ function renderRewardTab(who, showTotal = true, opts = {}) {
       // 報酬枚数：1行目に枚数、2行目に1日あたり
       ['報酬枚数', el('span', {}, hid(fmtInt(reward)) + ' ' + sym, el('br'), el('span', { class: 'per-day' }, hid(fmtDec2(w.share * s.rateNow / 365)) + ' ' + sym + '/日'))],
       ['預入日時', fmtDate(split.t)],
-      ['経過日数', s.days + ' 日'],
-      ['　旧EARN Tier（〜' + oldLast + '）', rankText(s.rankOld, s.rateOld) + '（' + s.oldDays + ' 日）'],
-      ['　新EARN Tier（' + newFirst + '〜）', rankText(s.rankNew, s.rateNew) + '（' + s.newDays + ' 日）'],
+      // 預入期間：「EARN Tier：Gold(9.75%) 30日」の形。ランクと年利は今のもの。旧・新の日数の内訳は出さない（2.1、EARN VIEWER に合わせる）
+      ['預入期間', el('span', { class: 'tier-inline' }, 'EARN Tier：', el('span', { class: 'tier-nb' }, showYen ? tierIcon(s.rankNow && s.rankNow.name) : null,
+        hid(s.rankNow ? s.rankNow.name + '(' + pct(s.rateNow) + ')' : 'ランク外(0%)')), ' ' + s.days + '日')],
     ];
     const key = 'reward-' + w.id;
     const d = el('details', { class: 'fold' },
@@ -321,7 +315,8 @@ function renderAsset(who, s, all = who) {
   $('trialInput').placeholder = '例：' + String(examplePrice);
   document.querySelectorAll('#periodSeg button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.period === assetPeriod)));
   $('assetPrice').textContent = '現在価格：' + (price ? yenUnit(price) : '未設定');
-  $('rateNow').textContent = 'EARN Tier：' + hid(s.rankNow ? s.rankNow.name + '（' + pct(s.rateNow) + '）' : 'ランク外（0%）');
+  $('rateNow').replaceChildren(el('span', { class: 'tier-inline' }, 'EARN Tier：', el('span', { class: 'tier-nb' }, showYen ? tierIcon(s.rankNow && s.rankNow.name) : null,
+    hid(s.rankNow ? s.rankNow.name + '(' + pct(s.rateNow) + ')' : 'ランク外(0%)')))); // 2.1：Tier のアイコン。1行で出す（括弧は半角で短く）
   if ($('simSel')) {
     // 名前が変わったときにも作り直す
     const names = all.map((w) => w.name).join('|');
