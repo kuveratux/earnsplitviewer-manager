@@ -453,9 +453,7 @@ h2.sec-help { display: flex; align-items: center; gap: 8px; }
 /* 2.1：資産シミュレーション：期間のボタンは縮めない（EARN Tier の表示のほうを詰める） */
 .sim-ctl-in .seg { flex-shrink: 0; }
 .sim-ctl-in .rate-now { min-width: 0; text-align: right; }
-/* 2.1：EARN Tier のアイコン（宝石のバッジ）。EARN の一覧はアドレスと枚数の間にアイコン＋名前 */
-.rk-tier { display: inline-flex; align-items: center; gap: 3px; font-size: 12px; color: var(--muted); white-space: nowrap; }
-.rk-tier img { width: 16px; height: 16px; }
+/* 2.1：EARN Tier のアイコン（宝石のバッジ） */
 .tier-inline { display: inline-flex; align-items: center; gap: 3px; flex-wrap: wrap; justify-content: flex-end; }
 .tier-icon { width: 16px; height: 16px; vertical-align: -3px; margin-right: 3px; }
 .tier-inline .tier-icon { margin-right: 0; }
@@ -474,3 +472,20 @@ h2.sec-help { display: flex; align-items: center; gap: 8px; }
 .fold-group > .fold + .fold { margin-top: 8px; }
 .fold-sub-h { font-size: 12px; font-weight: 700; color: var(--muted); margin: 8px 0 0; letter-spacing: .04em; }
 .fold-sub-h:first-child { margin-top: 2px; }
+/* 2.1.2：ランキングの行（EARN VIEWER 1.0.1 から取り込み）。EARN Tier の名前はアドレスの後に、先頭をそろえる。内訳の行は折り返さない（はみ出すときは JS で文字を小さく） */
+.rk-tname { flex: none; width: 5.4em; font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rank-line .rk-total { flex: none; }
+.rank-line .tier-icon { flex: none; margin-right: 0; }
+.rank-sub { white-space: nowrap; overflow: hidden; }
+.rank-line.earn .cp, .rank-line.earn .rk-name { flex: none; width: 7.4em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }  /* EARN：アドレス（Manager 分・Agent 分の名前も）の幅をそろえて、EARN Tier の名前の先頭をそろえる */
+.rank-line.earn .rk-total { margin-left: auto; }
+@media (max-width: 380px) { .rank-line.earn .cp, .rank-line.earn .rk-name { width: 6.6em; } .rk-tname { width: 4.8em; font-size: 11px; } .rank-line { gap: 5px; } }
+/* 2.1.2（ESV だけ）：EARN の一覧は前回からの変化の印も出すので、印の幅を固定し、順位・アドレス・Tier の名前を少し詰めて1行に収める */
+/*   幅は px で固定（アドレスのボタンと Manager 分・Agent 分の名前は文字の大きさが違うので、em だとそろわない） */
+.rank-line.earn .rk-no { min-width: 0; width: 27px; flex: none; }
+.rank-line.earn .rk-chg, .rank-line.earn .rk-chg-ph { flex: none; width: 28px; box-sizing: border-box; text-align: center; padding-left: 0; padding-right: 0; }
+.rank-line.earn .cp, .rank-line.earn .rk-name { width: 100px; }
+.rank-line.earn .rk-tname { width: 56px; }
+@media (max-width: 380px) { .rank-line.earn { gap: 4px; } .rank-line.earn .cp, .rank-line.earn .rk-name { width: 86px; } .rank-line.earn .rk-tname { width: 46px; } }
+/* 2.1.2：自分の行は枠線が 2px（ほかは 1px）なので、内側の余白を 1px 減らして中身の位置をほかの行とそろえる */
+.ranklist li.rank-row.self { padding: 7px 9px; }
