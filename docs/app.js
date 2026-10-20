@@ -43,15 +43,10 @@ async function saveOrders() { await putSetting('orders', orders); refreshAll(); 
 }));
 
 function renderTx() {
-  const sym = data.token.symbol;
   renderTxTab({
     clsList: CLS_ORDER,
     amountOf: (x) => x.amount,
-    splitRows: (s) => [
-      ['預入枚数（合計）', fmtAmount(s.amount) + ' ' + sym],
-      [memberName('manager') + ' 分（' + pct(data.ratio.manager) + '）', fmtAmount(s.shares.manager) + ' ' + sym],
-      [memberName('agent') + ' 分（' + pct(data.ratio.agent) + '）', fmtAmount(s.shares.agent) + ' ' + sym],
-    ],
+    mineName: '配布先', // 取引タブの「配布先の取引」・直近取引の配布先の表示（2026-10 ユーザー決定）
     explorer: data.chain && data.chain.explorer,
   });
 }

@@ -13,23 +13,18 @@ let nameOf = (addr) => short(addr);
 const clsTag = (cls) => el('span', { class: 'tag cls-' + cls }, CLS_LABEL[cls] || cls);
 
 // 取引タブを描く
-// opts：{ clsList（表示する区分）, amountOf（行 → 表示する枚数）, splitRows（分配の内訳 [[見出し, 値], …]）, explorer }
+// 取引タブは2つの折りたたみ：配布先の取引（タイトルはランキングでの表示名）と、コントラクト全体の直近取引（2026-10）
+// opts：{ clsList（表示する区分）, amountOf（行 → 表示する枚数）, mineName（配布先の取引のタイトルに使う名前）, explorer }
 function renderTxTab(opts) {
   const rows = data.transfers;
   const sym = data.token.symbol;
-
-  // 分配の内訳（分配は常に1件の想定）
-  const split = rows.find((x) => x.cls === 'split');
-  $('splitCard').replaceChildren(split
-    ? el('div', { class: 'card' }, el('div', { class: 'sym' }, '預入（' + fmtDate(split.t) + '）'),
-      el('div', { class: 'kv kv-plain' }, ...kvRows(opts.splitRows(split).map(([k, v]) => [k, showYen ? v : HIDDEN + ' ' + sym]))))
-    : el('div', { class: 'card' }, el('div', { class: 'muted' }, '「EARN」に仕分けた取引はありません。')));
+  $('mineTitle').textContent = opts.mineName + 'の取引';
 
   // 区分別（件数・受取・送付）
   const th = (t, n) => el('th', n ? { class: 'n' } : {}, t);
   const td = (t, n) => el('td', n ? { class: 'n' } : {}, t);
   $('clsTable').replaceChildren(
-    el('tr', {}, th('区分'), th('件数', 1), th('受取（' + sym + '）', 1), th('送付（' + sym + '）', 1)),
+    el('tr', {}, th('区分'), th('件数', 1), th('受取', 1), th('送付', 1)),
     ...opts.clsList.map((cls) => {
       const rs = rows.filter((x) => x.cls === cls);
       const sum = (dir) => rs.filter((x) => x.dir === dir).reduce((a, x) => a + Number(opts.amountOf(x)), 0);
@@ -55,6 +50,38 @@ function renderTxTab(opts) {
         el('span', { class: 'cp-label' }, x.dir === 'in' ? '受取元：' : '送付先：'), nameOf(x.counterparty)),
       link ? el('div', {}, link) : null);
   }));
+  renderRecent(opts);
+}
+
+// コントラクト全体の直近取引（保有者ランキングを取得した時点の新しい 100 件）。まず 10 件、［さらに10件］で 10 件ずつ増やす
+let recentShown = 10;
+function renderRecent(opts) {
+  const sym = data.token.symbol;
+  const rg = data.ranking;
+  const list = (rg && rg.recent) || [];
+  $('recentTitle').textContent = sym + 'の直近取引';
+  $('recentNote').textContent = !rg ? 'このデータには保有者ランキングが入っていないため、直近取引はありません。'
+    : !list.length ? 'このデータには直近取引が入っていません（保有者ランキングを取得し直すと入ります）。'
+    : '保有者ランキングを取得した時点（' + fmtDate(Date.parse(rg.generatedAt) / 1000) + '）の新しい ' + list.length + ' 件のうち、' + Math.min(recentShown, list.length) + ' 件を表示';
+  const self = (rg && rg.self) || '';
+  const community = new Set(((rg && rg.source && rg.source.community) || []).map((a) => a.toLowerCase()));
+  const ZERO = '0x' + '0'.repeat(40);
+  // アドレスの見せ方：配布先は名前、運営は Community の名前、0x000…（発行・焼却）はそのことがわかるように、ほかは短縮
+  const who = (a, zeroText) => (a === self ? opts.mineName : a === ZERO ? zeroText : community.has(a) ? comName() : short(a));
+  $('recentList').replaceChildren(...list.slice(0, recentShown).map((x) => {
+    const mine = x.from === self || x.to === self; // 配布先の取引は、隠すときに枚数も隠す
+    const link = data.dummy || !opts.explorer || !x.tx ? null :
+      el('a', { class: 'tx-link', href: opts.explorer + '/tx/' + x.tx, target: '_blank', rel: 'noopener noreferrer' }, 'エクスプローラーで見る');
+    return el('li', mine ? { class: 'mine' } : {},
+      el('div', { class: 'tx-top' },
+        el('span', { class: 'tx-date' }, fmtDate(x.t)),
+        el('span', { class: 'tx-amt' }, (mine ? hid(fmtAmount(x.amount)) : fmtAmount(x.amount)) + ' ' + sym)),
+      el('div', { class: 'recent-route' }, who(x.from, '発行'), ' → ', who(x.to, '焼却')),
+      link ? el('div', {}, link) : null);
+  }));
+  const more = $('recentMore');
+  more.hidden = recentShown >= list.length;
+  more.onclick = () => { recentShown = Math.min(recentShown + 10, 100); renderRecent(opts); };
 }
 
 //--------------------------------------------------------------

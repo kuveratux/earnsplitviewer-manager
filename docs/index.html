@@ -68,22 +68,36 @@
       <p class="muted">「設定」タブの「最新データを取得」（またはファイルから読み込む）で、データを読み込んでください。</p>
     </div>
     <div class="whenData" hidden>
-      <div id="splitCard"></div>
-      <h2 class="sec">区分別</h2>
-      <div class="scroll"><table id="clsTable" class="grid"></table></div>
-      <h2 class="sec">取引履歴</h2>
-      <div class="filters">
-        <label>区分 <select id="clsSel"></select></label>
-        <label>向き
-          <select id="dirSel">
-            <option value="">すべて</option>
-            <option value="in">受取</option>
-            <option value="out">送付</option>
-          </select>
-        </label>
-      </div>
-      <p id="txCount" class="muted"></p>
-      <ul id="txList" class="txlist"></ul>
+      <!-- 配布先の取引（起動時は開く） -->
+      <details class="fold tx-fold" open>
+        <summary><span id="mineTitle">配布先の取引</span></summary>
+        <div class="fold-body">
+          <h2 class="sec">区分別</h2>
+          <div class="scroll"><table id="clsTable" class="grid"></table></div>
+          <h2 class="sec">取引履歴</h2>
+          <div class="filters">
+            <label>区分 <select id="clsSel"></select></label>
+            <label>向き
+              <select id="dirSel">
+                <option value="">すべて</option>
+                <option value="in">受取</option>
+                <option value="out">送付</option>
+              </select>
+            </label>
+          </div>
+          <p id="txCount" class="muted"></p>
+          <ul id="txList" class="txlist"></ul>
+        </div>
+      </details>
+      <!-- コントラクト全体の直近取引（起動時は閉じる。10 件ずつ、100 件まで） -->
+      <details class="fold tx-fold">
+        <summary><span id="recentTitle">直近取引</span></summary>
+        <div class="fold-body">
+          <p id="recentNote" class="muted"></p>
+          <ul id="recentList" class="txlist"></ul>
+          <div class="recent-more"><button id="recentMore" type="button">さらに10件</button></div>
+        </div>
+      </details>
     </div>
   </section>
 
