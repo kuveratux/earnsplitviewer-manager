@@ -245,6 +245,9 @@ function renderAsset(who, s, all = who) {
     $('heroSub').textContent = !price ? '現在価格が未設定のため、資産額は表示できません'
       : c.cost > 0 ? '含み損益 ' + gain(c, price) : '購入の記録はありません';
   }
+  // 現在価格：資産額の根拠として、すぐ下に小さく（取得エクセルで入れた値なので、データの作成日を「時点」として添える）
+  const asOf = new Date(data.generatedAt).toLocaleDateString('ja-JP', { timeZone: 'Asia/Tokyo', month: 'numeric', day: 'numeric' });
+  $('heroPrice').textContent = price && who.length ? '1 ' + sym + ' = ' + yenUnit(price) + '（' + asOf + ' 時点）' : '';
 
   // 資産額の内訳（対象ごとに折りたたみ。起動時は開く）
   $('assetList').replaceChildren(...who.map((w) => {
@@ -284,7 +287,7 @@ function renderAsset(who, s, all = who) {
   $('trialInput').placeholder = '例：' + String(examplePrice);
   document.querySelectorAll('#periodSeg button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.period === assetPeriod)));
   $('assetPrice').textContent = '現在価格：' + (price ? yenUnit(price) : '未設定');
-  $('rateNow').textContent = hid(s.rankNow ? s.rankNow.name + ' ' + pct(s.rateNow) : 'ランク外 0%');
+  $('rateNow').textContent = 'EARN Tier：' + hid(s.rankNow ? s.rankNow.name + '・APY ' + pct(s.rateNow) : 'ランク外・APY 0%');
   if ($('simSel')) {
     // 名前が変わったときにも作り直す
     const names = all.map((w) => w.name).join('|');

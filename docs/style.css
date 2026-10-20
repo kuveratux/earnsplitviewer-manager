@@ -403,3 +403,6 @@ table.grid.sim td.n { text-align: center; }
 .hero-row .coin-icon + .hero-val + .eye-toggle, .hero-row .hero-val + .eye-toggle { margin-left: auto; }
 .chart-hidden { padding: 40px 12px; text-align: center; color: var(--muted); font-size: 13px; border: 1px dashed var(--edge); border-radius: 12px; }
 .hidden-fish { color: var(--muted); font-size: 30px; }
+/* 1.8.1：資産額の下の現在価格、割合の表の数字を中央そろえ（見出しの真下に） */
+.hero-price { font-size: 12px; margin-top: 2px; }
+.share-table td.num { text-align: center; }

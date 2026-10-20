@@ -189,7 +189,7 @@ function rankShareOf(depositors, holders) {
   const colors = rampFor(names.length).reverse();
   const nowTable = Date.now() / 1000 >= Date.parse(ranks.new.startDate + 'T00:00:00+09:00') / 1000 ? ranks.new.ranks : ranks.old.ranks;
   const apyOf = (name) => { const r = nowTable.find((x) => x.name === name); return r ? pct(r.rate) : '—'; };
-  const NONE = '利用無し'; // EARN を利用していない（預けていない）人
+  const NONE = '利用なし'; // EARN を利用していない（預けていない）人
   const rows = [...names, OUT].map((name, i) => ({ key: name, label: name, color: name === OUT ? SHARE_GRAY : colors[i], apy: name === OUT ? '—' : apyOf(name), count: depositors.filter((p) => (p.rankName || OUT) === name).length }));
   rows.push({ key: NONE, label: NONE, color: SHARE_GRAY_DARK, apy: '—', count: holders.filter((h) => !(h.principal > 0)).length });
   const total = rows.reduce((t, r) => t + r.count, 0);
@@ -227,7 +227,7 @@ function renderShare(d, kind) {
   const sel = shareSel[kind];
   const pick = (key) => { shareSel[kind] = shareSel[kind] === key ? null : key; refreshAll(); };
   // ドーナツ（上から時計回り。区分の間に地の色のすき間）
-  // EARN利用者比率：輪の外側 1/3 に利用ありの範囲（いちばん濃い色）、内側 2/3 に内訳（レベル・利用無し）
+  // EARN利用者比率：輪の外側 1/3 に利用ありの範囲（いちばん濃い色）、内側 2/3 に内訳（レベル・利用なし）
   const S = 220, C = S / 2, RO = 100, RI = 62;
   const svg = svgEl('svg', { viewBox: `0 0 ${S} ${S}`, class: 'donut', role: 'img', 'aria-label': kind === 'rankShare' ? 'EARN利用者比率' : 'トークン配分内訳' });
   const pt = (r, a) => [C + r * Math.cos(a), C + r * Math.sin(a)];
@@ -246,7 +246,7 @@ function renderShare(d, kind) {
   for (const r of d.rows) {
     if (!(r.ratio > 0)) continue;
     const a1 = a0 + r.ratio * Math.PI * 2;
-    const ro = twoRings && r.key !== d.NONE ? inRO : RO; // 利用無しは輪の全体の太さ
+    const ro = twoRings && r.key !== d.NONE ? inRO : RO; // 利用なしは輪の全体の太さ
     const seg = svgEl('path', { d: arc(a0, a1, ro, RI), fill: r.color, class: 'seg-arc' + (lit(r.key) ? '' : ' dim') + (sel === r.key ? ' on' : ''), 'fill-rule': 'evenodd' });
     const tip = svgEl('title', {}); tip.textContent = r.label + '：' + pctText(r.ratio); seg.appendChild(tip);
     seg.addEventListener('click', () => pick(r.key));
@@ -265,8 +265,8 @@ function renderShare(d, kind) {
   const t2 = svgEl('text', { x: C, y: C + 18, class: 'donut-sub', 'text-anchor': 'middle' }); t2.textContent = s ? (s.text || s.label) : d.centerSub;
   svg.append(t1, t2);
 
-  // 表（凡例を兼ねる。押すと選ぶ）。EARN利用者比率は 利用あり（その下にレベル）・利用無し の順
-  const head = kind === 'rankShare' ? ['', '人数', '割合', 'APY'] : ['Tier', '件数', '枚数', '割合'];
+  // 表（凡例を兼ねる。押すと選ぶ）。EARN利用者比率は 利用あり（その下にレベル）・利用なし の順
+  const head = kind === 'rankShare' ? ['EARN Tier', '人数', '割合', 'APY'] : ['Tier', '件数', '枚数', '割合'];
   const rowsForTable = kind === 'rankShare'
     ? [{ key: '__used', label: '利用あり', head: true, count: d.used, ratio: d.usedRatio, apy: '' }, ...d.rows.filter((r) => r.key !== d.NONE).map((r) => ({ ...r, sub: true })), ...d.rows.filter((r) => r.key === d.NONE).map((r) => ({ ...r, head: true }))]
     : d.rows;
