@@ -287,7 +287,7 @@ function renderAsset(who, s, all = who) {
   $('trialInput').placeholder = '例：' + String(examplePrice);
   document.querySelectorAll('#periodSeg button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.period === assetPeriod)));
   $('assetPrice').textContent = '現在価格：' + (price ? yenUnit(price) : '未設定');
-  $('rateNow').textContent = 'EARN Tier：' + hid(s.rankNow ? s.rankNow.name + '・APY ' + pct(s.rateNow) : 'ランク外・APY 0%');
+  $('rateNow').textContent = 'EARN Tier：' + hid(s.rankNow ? s.rankNow.name + '（' + pct(s.rateNow) + '）' : 'ランク外（0%）');
   if ($('simSel')) {
     // 名前が変わったときにも作り直す
     const names = all.map((w) => w.name).join('|');

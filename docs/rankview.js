@@ -261,9 +261,18 @@ function renderShare(d, kind) {
     svg.appendChild(used);
   }
   const s = sel === '__used' ? { ratio: d.usedRatio, text: '利用あり' } : d.rows.find((r) => r.key === sel);
-  const t1 = svgEl('text', { x: C, y: C - 4, class: 'donut-main', 'text-anchor': 'middle' }); t1.textContent = s ? pctText(s.ratio) : d.center;
-  const t2 = svgEl('text', { x: C, y: C + 18, class: 'donut-sub', 'text-anchor': 'middle' }); t2.textContent = s ? (s.text || s.label) : d.centerSub;
-  svg.append(t1, t2);
+  // トークン配分内訳で区分を選んだときは、真ん中に区分の画像（Tier は絵文字、運営は設定した画像）と割合（2026-10 ユーザー指示）
+  const pic = kind === 'fishShare' && s ? (s.image ? { img: s.image } : FISH_EMOJI[s.key] ? { emoji: FISH_EMOJI[s.key] } : null) : null;
+  if (pic) {
+    if (pic.img) svg.appendChild(svgEl('image', { href: pic.img, x: C - 22, y: C - 44, width: 44, height: 44, preserveAspectRatio: 'xMidYMid meet' }));
+    else { const e = svgEl('text', { x: C, y: C - 8, class: 'donut-emoji', 'text-anchor': 'middle' }); e.textContent = pic.emoji; svg.appendChild(e); }
+    const t = svgEl('text', { x: C, y: C + 26, class: 'donut-main', 'text-anchor': 'middle' }); t.textContent = pctText(s.ratio);
+    svg.appendChild(t);
+  } else {
+    const t1 = svgEl('text', { x: C, y: C - 4, class: 'donut-main', 'text-anchor': 'middle' }); t1.textContent = s ? pctText(s.ratio) : d.center;
+    const t2 = svgEl('text', { x: C, y: C + 18, class: 'donut-sub', 'text-anchor': 'middle' }); t2.textContent = s ? (s.text || s.label) : d.centerSub;
+    svg.append(t1, t2);
+  }
 
   // 表（凡例を兼ねる。押すと選ぶ）。EARN利用者比率は 利用あり（その下にレベル）・利用なし の順
   const head = kind === 'rankShare' ? ['EARN Tier', '人数', '割合', 'APY'] : ['Tier', '件数', '枚数', '割合'];
@@ -274,7 +283,7 @@ function renderShare(d, kind) {
     el('tr', {}, ...head.map((h, i) => el('th', i ? { class: 'num' } : {}, h))),
     ...rowsForTable.map((r) => {
       const tr = el('tr', { class: (lit(r.key) ? '' : 'dim') + (sel === r.key ? ' on' : '') + (r.sub ? ' sub' : '') + (r.head ? ' head' : '') },
-        el('td', {}, r.key === '__used' ? el('span', { class: 'swatch', style: 'background:' + SHARE_DARKEST }) : el('span', { class: 'swatch', style: 'background:' + r.color }), r.image ? el('img', { class: 'share-img', src: r.image, alt: '' }) : null, r.label),
+        el('td', {}, r.key === '__used' ? el('span', { class: 'swatch', style: 'background:' + SHARE_DARKEST }) : el('span', { class: 'swatch', style: 'background:' + r.color }), r.image ? el('img', { class: 'share-img', src: r.image, alt: r.label, title: r.label }) : null, r.image ? null : r.label), // 運営は画像があれば画像だけ
         el('td', { class: 'num' }, r.count.toLocaleString('ja-JP')),
         ...(kind === 'fishShare' ? [el('td', { class: 'num' }, fmtInt(r.value))] : []),
         el('td', { class: 'num' }, pctText(r.ratio)),
