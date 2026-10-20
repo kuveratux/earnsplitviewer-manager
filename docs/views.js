@@ -45,13 +45,16 @@ function renderTxTab(opts) {
     return el('li', {},
       el('div', { class: 'tx-top' },
         el('span', { class: 'tx-date' }, fmtDate(x.t), clsTag(x.cls)),
-        el('span', { class: 'tx-amt ' + x.dir }, (x.dir === 'in' ? '+' : '−') + hid(fmtAmount(opts.amountOf(x))) + ' ' + sym)),
+        el('span', { class: 'tx-amt ' + x.dir }, (x.dir === 'in' ? '+' : '−') + hid(fmtDec1(opts.amountOf(x))) + ' ' + sym)),
       el('button', { class: 'cp', type: 'button', onclick: () => openNameDialog(x.counterparty) },
         el('span', { class: 'cp-label' }, x.dir === 'in' ? '受取元：' : '送付先：'), nameOf(x.counterparty)),
       link ? el('div', {}, link) : null);
   }));
   renderRecent(opts);
 }
+
+// 取引の一覧（配布先の取引・直近取引）の枚数は小数第1位まで（切り捨て。2026-10 ユーザー指示）
+const fmtDec1 = (v) => (Math.floor(Number(v) * 10 + 1e-7) / 10).toLocaleString('ja-JP', { maximumFractionDigits: 1 });
 
 // コントラクト全体の直近取引（保有者ランキングを取得した時点の新しい 100 件）。まず 10 件、［さらに10件］で 10 件ずつ増やす
 let recentShown = 10;
@@ -62,7 +65,8 @@ function renderRecent(opts) {
   $('recentTitle').textContent = sym + 'の直近取引';
   $('recentNote').textContent = !rg ? 'このデータには保有者ランキングが入っていないため、直近取引はありません。'
     : !list.length ? 'このデータには直近取引が入っていません（保有者ランキングを取得し直すと入ります）。'
-    : '保有者ランキングを取得した時点（' + fmtDate(Date.parse(rg.generatedAt) / 1000) + '）の新しい ' + list.length + ' 件のうち、' + Math.min(recentShown, list.length) + ' 件を表示';
+    : ''; // 取引があるときの説明は出さない（2026-10 ユーザー指示）
+  $('recentNote').hidden = !$('recentNote').textContent;
   const self = (rg && rg.self) || '';
   const community = new Set(((rg && rg.source && rg.source.community) || []).map((a) => a.toLowerCase()));
   const ZERO = '0x' + '0'.repeat(40);
@@ -75,7 +79,7 @@ function renderRecent(opts) {
     return el('li', mine ? { class: 'mine' } : {},
       el('div', { class: 'tx-top' },
         el('span', { class: 'tx-date' }, fmtDate(x.t)),
-        el('span', { class: 'tx-amt' }, (mine ? hid(fmtAmount(x.amount)) : fmtAmount(x.amount)) + ' ' + sym)),
+        el('span', { class: 'tx-amt' }, (mine ? hid(fmtDec1(x.amount)) : fmtDec1(x.amount)) + ' ' + sym)),
       el('div', { class: 'recent-route' }, who(x.from, '発行'), ' → ', who(x.to, '焼却')),
       link ? el('div', {}, link) : null);
   }));
