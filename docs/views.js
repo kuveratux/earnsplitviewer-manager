@@ -141,8 +141,8 @@ function renderRewardTab(who, showTotal = true, opts = {}) {
       ['報酬枚数', el('span', {}, hid(fmtInt(reward)) + ' ' + sym, el('br'), el('span', { class: 'per-day' }, hid(fmtDec2(w.share * s.rateNow / 365)) + ' ' + sym + '/日'))],
       ['預入日時', fmtDate(split.t)],
       ['経過日数', s.days + ' 日'],
-      ['　旧ランク（〜' + oldLast + '）', rankText(s.rankOld, s.rateOld) + '（' + s.oldDays + ' 日）'],
-      ['　新ランク（' + newFirst + '〜）', rankText(s.rankNew, s.rateNew) + '（' + s.newDays + ' 日）'],
+      ['　旧EARN Tier（〜' + oldLast + '）', rankText(s.rankOld, s.rateOld) + '（' + s.oldDays + ' 日）'],
+      ['　新EARN Tier（' + newFirst + '〜）', rankText(s.rankNew, s.rateNew) + '（' + s.newDays + ' 日）'],
     ];
     const key = 'reward-' + w.id;
     const d = el('details', { class: 'fold' },
