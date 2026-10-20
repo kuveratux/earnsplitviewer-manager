@@ -470,3 +470,7 @@ h2.sec-help { display: flex; align-items: center; gap: 8px; }
 .card-head h2 { margin: 0; }
 .recv-more { margin-top: 10px; }
 .onb-h { font-size: 14px; margin: 14px 0 6px; }
+/* 2.1.1：ホームの資産額の「内訳」と「購入情報」（Agent は2つの折りたたみ、Manager は1つの中を小見出しで分ける） */
+.fold-group > .fold + .fold { margin-top: 8px; }
+.fold-sub-h { font-size: 12px; font-weight: 700; color: var(--muted); margin: 8px 0 0; letter-spacing: .04em; }
+.fold-sub-h:first-child { margin-top: 2px; }

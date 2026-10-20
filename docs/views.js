@@ -94,6 +94,16 @@ function renderRecent(opts) {
 //--------------------------------------------------------------
 let rewardMode = 'simple';
 
+// 配布先アドレスのウォレット残高（2.1.1、ユーザー決定）。保有者ランキングを取得した時点の値（データの ranking.source.wallet）
+// ランキングと同じ決まりで Manager 分（と合算）に入れ、Agent 分は 0。ホームの総枚数・資産額、報酬タブの保有枚数・運用シミュレーションに含める
+function walletOf(id) {
+  if (id === 'agent') return 0;
+  const rg = data && data.ranking;
+  if (!rg || !rg.source || !rg.source.wallet || !rg.self) return 0;
+  const raw = rg.source.wallet[String(rg.self).toLowerCase()];
+  return raw ? Deposits.toTokens(BigInt(raw), rg.source.decimals) : 0;
+}
+
 // 報酬タブの枚数は横幅を取らないよう切り捨てて表示する（ユーザー指示）
 // 大きい数字は整数、小さくなりうる「1日あたり」「期間の報酬」は小数2桁まで。計算の誤差（7199.9999…）で1つ少なく出ないよう、わずかに足してから切り捨てる
 const fmtInt = (v) => Math.floor(Number(v) + 1e-9).toLocaleString('ja-JP');
@@ -129,7 +139,9 @@ function renderRewardTab(who, showTotal = true, opts = {}) {
   const rewardList = opts.rewardWho || who;
   $('rewardCards').replaceChildren(...(rewardList.length ? [] : [el('div', { class: 'card' }, el('p', { class: 'muted' }, '表示する対象がありません。「設定」の「保有枚数の表示」で選んでください。'))]), ...rewardList.map((w, wi) => {
     const reward = w.share * s.factor;
+    const wallet = walletOf(w.id);
     const rows = [
+      ...(w.id === 'agent' ? [] : [['ウォレット残高', hid(fmtInt(wallet)) + ' ' + sym]]),
       ['預入枚数', hid(fmtInt(w.share)) + ' ' + sym + (showYen && showTotal && w.share !== s.total ? '（' + pct(w.share / s.total) + '）' : '')],
       // 報酬枚数：1行目に枚数、2行目に1日あたり
       ['報酬枚数', el('span', {}, hid(fmtInt(reward)) + ' ' + sym, el('br'), el('span', { class: 'per-day' }, hid(fmtDec2(w.share * s.rateNow / 365)) + ' ' + sym + '/日'))],
@@ -147,7 +159,7 @@ function renderRewardTab(who, showTotal = true, opts = {}) {
     return el('div', { class: 'card asset-hero' },
       el('div', { class: 'sym' }, multi ? '保有枚数（' + labelOf_(w) + '）' : '保有枚数'),
       el('div', { class: 'hero-row' }, coinIcons[w.id] ? el('img', { class: 'coin-icon', src: coinIcons[w.id], alt: '' }) : null,
-        el('span', { class: 'hero-val' }, hid(fmtInt(w.share + reward)) + ' ' + sym), wi === 0 ? eyeButton() : null),
+        el('span', { class: 'hero-val' }, hid(fmtInt(wallet + w.share + reward)) + ' ' + sym), wi === 0 ? eyeButton() : null),
       el('div', { class: 'hero-folds' }, d));
   }));
 
@@ -169,7 +181,8 @@ function renderRewardTab(who, showTotal = true, opts = {}) {
   // 運用シミュレーション：期間（1・3・5・10年）、引出し（TUX価格と年間希望報酬〔円〕から年間の枚数を出し、日・週・月・年のタイミングで引く）
   document.querySelectorAll('#yearsSeg button').forEach((b) => b.setAttribute('aria-pressed', String(Number(b.dataset.years) === simYears)));
   document.querySelectorAll('#wdFreqSeg button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.freq === wdFreq)));
-  const holding = target.share * (1 + s.factor); // 今日の保有枚数
+  const tWallet = walletOf(target.id); // ウォレット残高（増えも減りもしない分として足す。報酬と引出しは預入の分で計算）
+  const holding = tWallet + target.share * (1 + s.factor); // 今日の保有枚数
   const nowPrice = Number(data.price) || 0; // データの現在価格
   const wdUnitPrice = wdPrice > 0 ? wdPrice : nowPrice; // 空欄なら現在価格
   if (document.activeElement !== $('wdPrice')) $('wdPrice').value = wdPrice > 0 ? wdPrice : (nowPrice || '');
@@ -188,7 +201,7 @@ function renderRewardTab(who, showTotal = true, opts = {}) {
   const w = target.share > 0 ? withdraw / target.share : 0;
   const proj = { simple: Reward.project(split, rk, now, 'simple', months, w, wdFreq), compound: Reward.project(split, rk, now, 'compound', months, w, wdFreq) };
   const label = (p) => (p.month === 0 ? '今日' : p.month % 12 === 0 ? (p.month / 12) + '年後' : p.month + 'か月後') + '（' + fmtDay(p.t) + '）';
-  const points = proj[rewardMode].map((p) => ({ v: target.share * p.g, label: label(p) }));
+  const points = proj[rewardMode].map((p) => ({ v: tWallet + target.share * p.g, label: label(p) }));
   $('rewardTableTitle').textContent = simYears + '年後までの推移'; // 一覧の見出しは選んでいる期間に合わせる（2026-10 ユーザー指示）
   const step = simYears <= 1 ? 3 : simYears <= 5 ? 12 : 24; // 目盛り（1年は3か月ごと、5年までは1年ごと、10年は2年ごと）
   const ticks = [];
@@ -209,7 +222,7 @@ function renderRewardTab(who, showTotal = true, opts = {}) {
   for (let y = 0; y <= simYears; y++) rows.push(y * 12);
   $('rewardTable').replaceChildren(
     el('tr', {}, th('時点'), th('単利', 1), th('複利', 1)),
-    ...rows.map((m) => el('tr', {}, td(label(proj.simple[m])), td(hid(fmtInt(target.share * proj.simple[m].g)) + ' ' + sym, 1), td(hid(fmtInt(target.share * proj.compound[m].g)) + ' ' + sym, 1))));
+    ...rows.map((m) => el('tr', {}, td(label(proj.simple[m])), td(hid(fmtInt(tWallet + target.share * proj.simple[m].g)) + ' ' + sym, 1), td(hid(fmtInt(tWallet + target.share * proj.compound[m].g)) + ' ' + sym, 1))));
 }
 
 //--------------------------------------------------------------
@@ -252,11 +265,12 @@ function renderAsset(who, s, all = who) {
   const na = '—';
   // 対象ごとの数字
   const calc = (w) => {
-    const coins = w.share * (1 + s.factor);
+    const wallet = walletOf(w.id);
+    const coins = wallet + w.share * (1 + s.factor); // 総枚数＝ウォレット残高＋預入＋報酬（2.1.1。Agent 分のウォレット残高は 0）
     const buys = purchasesOf(w.id);
     const qty = buys.reduce((a, p) => a + Number(p.qty), 0);
     const cost = buys.reduce((a, p) => a + Number(p.amount), 0);
-    return { w, coins, buys, qty, cost, reward: w.share * s.rateNow / 365 * per.days };
+    return { w, wallet, coins, buys, qty, cost, reward: w.share * s.rateNow / 365 * per.days };
   };
   const gain = (c, pr) => (c.cost > 0 ? signedYen(c.coins * pr - c.cost) + '（' + signedPct((c.coins * pr - c.cost) / c.cost) + '）' : na);
 
@@ -280,22 +294,36 @@ function renderAsset(who, s, all = who) {
   // 資産額の内訳（対象ごとに折りたたみ。起動時は開く）
   $('assetList').replaceChildren(...who.map((w) => {
     const c = calc(w);
+    const hasWallet = w.id !== 'agent'; // Agent 分のウォレット残高はいつも 0 なので行を出さない（2.1.1、ユーザー決定）
     const rows = [
-      ['総枚数（預入＋報酬）', hid(fmtInt(c.coins)) + ' ' + sym],
+      [hasWallet ? '総枚数（ウォレット残高＋預入＋報酬）' : '総枚数（預入＋報酬）', hid(fmtInt(c.coins)) + ' ' + sym],
+      ...(hasWallet ? [['ウォレット残高', hid(fmtInt(c.wallet)) + ' ' + sym]] : []),
+      ['預入枚数', hid(fmtInt(w.share)) + ' ' + sym],
       ['報酬枚数', hid(fmtInt(w.share * s.factor)) + ' ' + sym],
+    ];
+    // 購入情報（購入の記録は取得エクセルの「購入履歴」シートからデータで配る）
+    const buyRows = [
       ['購入枚数', c.buys.length ? hid(fmtInt(c.qty)) + ' ' + sym : '購入の記録なし'],
       ['購入金額', c.buys.length ? yen(c.cost) : na],
       ['購入分の平均単価', c.qty > 0 ? yenUnit(c.cost / c.qty) : na],
       ['総枚数の平均単価', c.coins > 0 && c.buys.length ? yenUnit(c.cost / c.coins) : na],
     ];
-    // 見出し：Manager は対象の名前と資産額、Agent は「内訳」だけ（一番上の資産額と同じなので）
-    const multi = APP.id === 'manager';
-    const d = el('details', { class: 'fold' },
-      el('summary', {}, el('span', {}, multi ? w.name : '内訳'), multi ? el('span', { class: 'fold-val' }, price ? yen(c.coins * price) : hid(fmtInt(c.coins)) + ' ' + sym) : null),
-      el('div', { class: 'fold-body' }, el('div', { class: 'kv kv-plain' }, ...kvRows(rows))));
-    d.open = !closedFolds.has(w.id);
-    d.addEventListener('toggle', () => { if (d.open) closedFolds.delete(w.id); else closedFolds.add(w.id); });
-    return d;
+    const fold = (key, summary, ...body) => {
+      const f = el('details', { class: 'fold' }, summary, el('div', { class: 'fold-body' }, ...body));
+      f.open = !closedFolds.has(key);
+      f.addEventListener('toggle', () => { if (f.open) closedFolds.delete(key); else closedFolds.add(key); });
+      return f;
+    };
+    // Manager：見出しは対象の名前と資産額。中を「内訳」「購入情報」の小見出しで分ける
+    if (APP.id === 'manager') {
+      return fold(w.id, el('summary', {}, el('span', {}, w.name), el('span', { class: 'fold-val' }, price ? yen(c.coins * price) : hid(fmtInt(c.coins)) + ' ' + sym)),
+        el('div', { class: 'fold-sub-h' }, '内訳'), el('div', { class: 'kv kv-plain' }, ...kvRows(rows)),
+        el('div', { class: 'fold-sub-h' }, '購入情報'), el('div', { class: 'kv kv-plain' }, ...kvRows(buyRows)));
+    }
+    // Agent：「内訳」と「購入情報」の2つの折りたたみ（EARN VIEWER と同じ）
+    return el('div', { class: 'fold-group' },
+      fold(w.id, el('summary', {}, el('span', {}, '内訳')), el('div', { class: 'kv kv-plain' }, ...kvRows(rows))),
+      fold('buy-' + w.id, el('summary', {}, el('span', {}, '購入情報')), el('div', { class: 'kv kv-plain' }, ...kvRows(buyRows))));
   }));
 
   // 購入履歴の一覧（Agent アプリだけ。Manager アプリには一覧の欄がない）
