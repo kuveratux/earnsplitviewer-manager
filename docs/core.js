@@ -182,6 +182,7 @@ async function importText(text, fileName, source) {
     await putSetting('rankNew', ranks.new);
   }
   await putSetting('current', { data: json, meta });
+  if (typeof applyDisplay === 'function') await applyDisplay(json); // 画像・Community（変わったものだけ入れ替える）
   data = json;
   dataMeta = meta;
   refreshAll();

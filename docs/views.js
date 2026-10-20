@@ -377,51 +377,41 @@ const showYenUnit = () => {
 };
 $('wdYen').addEventListener('input', showYenUnit);
 document.querySelectorAll('#wdFreqSeg button').forEach((b) => b.addEventListener('click', async () => { wdFreq = b.dataset.freq; await putSetting('wdFreq', wdFreq); refreshAll(); }));
-// ---- コインのアイコン（報酬タブの保有枚数の数値の前。スマホの中の画像を選んで設定し、この端末の中だけに保存）
-// Manager は 合算・Manager・Agent の3つ、Agent は自分の1つ。画像は元の形のまま、長い辺を 160px に縮めた PNG（データ URL）で持つ
-let coinIcons = {};
-let coinPick = null; // 画像を選んでいる枠
-const COIN_MAX = 160;
-const coinSlots = () => (APP.id === 'manager'
-  ? [['total', '合算'], ['manager', (typeof memberName === 'function' && data ? memberName('manager') : 'Manager')], ['agent', (typeof memberName === 'function' && data ? memberName('agent') : 'Agent')]]
-  : [['agent', '保有枚数']]);
-function renderCoinIcons() {
-  const ul = $('coinIconList');
-  if (!ul) return;
-  ul.replaceChildren(...coinSlots().map(([id, label]) => el('li', {},
-    el('span', { class: 'coin-prev' }, coinIcons[id] ? el('img', { src: coinIcons[id], alt: '' }) : el('span', { class: 'muted' }, 'なし')),
-    el('div', { class: 'slot-text' }, el('b', {}, label)),
-    el('button', { type: 'button', onclick: () => { coinPick = id; $('coinIconFile').value = ''; $('coinIconFile').click(); } }, coinIcons[id] ? '選び直す' : '画像を選ぶ'),
-    coinIcons[id] ? el('button', { type: 'button', onclick: async () => { delete coinIcons[id]; await putSetting('coinIcons', coinIcons); refreshAll(); } }, '削除') : null)));
+// ---- 画像・Community（データで配られる。取得エクセルの設定シート「■ 画像・Community」。2026-10）
+// データの display を読んだとき、画像の目印（hash）や名前・色が変わったものだけを入れ替えて、端末に保存する（'display'）
+// 以前の形のデータ（display がない）を読んだときは、保存してあるものをそのまま使う
+// 以前スマホで選んでいた画像（'coinIcons'・'communityStyle'）は使わない（設定タブの欄もなくした）
+let coinIcons = {};                                       // 保有枚数の数値の前の画像。id（total・manager・agent）→ データ URL
+let communityStyle = { name: '', image: '', color: '' };   // ランキングのトークン配分内訳の運営の区分
+let displayStore = { coin: {}, community: { name: '', color: '', image: null } }; // 画像は { png, hash }
+function useDisplay() {
+  coinIcons = Object.fromEntries(Object.entries(displayStore.coin || {}).filter(([, x]) => x && x.png).map(([k, x]) => [k, x.png]));
+  const c = displayStore.community || {};
+  communityStyle = { name: c.name || '', color: c.color || '', image: c.image && c.image.png ? c.image.png : '' };
 }
-// 選んだ画像を縮めて PNG のデータ URL に（blob: は CSP で使えないので FileReader で読む）
-const readAsDataUrl = (file) => new Promise((ok, ng) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = () => ng(r.error); r.readAsDataURL(file); });
-async function shrinkImage(file) {
-  const img = new Image();
-  img.src = await readAsDataUrl(file);
-  await img.decode();
-  const k = Math.min(1, COIN_MAX / Math.max(img.naturalWidth, img.naturalHeight));
-  const c = document.createElement('canvas');
-  c.width = Math.max(1, Math.round(img.naturalWidth * k));
-  c.height = Math.max(1, Math.round(img.naturalHeight * k));
-  c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
-  return c.toDataURL('image/png');
+async function applyDisplay(d) {
+  if (!d || !d.display) return false;
+  const nd = d.display;
+  const hashOf = (x) => (x && x.hash) || '';
+  const coin = { ...(displayStore.coin || {}) };
+  let changed = false;
+  for (const [id, x] of Object.entries(nd.coin || {})) { if (hashOf(coin[id]) !== hashOf(x)) { coin[id] = x || null; changed = true; } } // Agent 用のデータは agent だけ
+  const oc = displayStore.community || {}, nc = nd.community || {};
+  const community = { name: nc.name || '', color: nc.color || '', image: hashOf(oc.image) === hashOf(nc.image) ? oc.image || null : nc.image || null };
+  if (community.name !== (oc.name || '') || community.color !== (oc.color || '') || hashOf(community.image) !== hashOf(oc.image)) changed = true;
+  if (!changed) return false;
+  displayStore = { coin, community };
+  await putSetting('display', displayStore);
+  useDisplay();
+  return true;
 }
-if ($('coinIconFile')) $('coinIconFile').addEventListener('change', async () => {
-  const f = $('coinIconFile').files[0];
-  if (!f || !coinPick) return;
-  try {
-    coinIcons[coinPick] = await shrinkImage(f);
-    await putSetting('coinIcons', coinIcons);
-    refreshAll();
-  } catch (e) {
-    alert('この画像は読み込めませんでした（' + (e && e.message ? e.message : '形式が違います') + '）。JPEG や PNG の画像を選んでください。');
-  }
-});
-ESV.renderers.push(renderCoinIcons);
 ESV.loaders.push(async () => {
-  const v = await getSetting('coinIcons');
-  coinIcons = v && typeof v === 'object' ? v : {};
+  const v = await getSetting('display');
+  if (v && typeof v === 'object') displayStore = Object.assign({ coin: {}, community: { name: '', color: '', image: null } }, v);
+  useDisplay();
+  if (data) await applyDisplay(data); // 保存してあるデータに画像が入っていれば受け取る（更新した直後など）
+  delSetting('coinIcons').catch(() => { /* 以前スマホで選んだ画像は使わない */ });
+  delSetting('communityStyle').catch(() => { /* 同上 */ });
 });
 
 ESV.loaders.push(async () => {

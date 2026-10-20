@@ -173,7 +173,7 @@ function jumpToRank(id, kind = 'holders') {
 document.querySelectorAll('#rankSeg button').forEach((b) => b.addEventListener('click', () => { rankListKind = b.dataset.list; rankShown = RANK_PAGE; refreshAll(); }));
 $('rankMore').addEventListener('click', () => { rankShown += RANK_PAGE; refreshAll(); });
 
-// ---- ③ EARN（レベル別の人数・APY）・④ Tier（魚分類）の割合（ドーナツと表）。Community（運営）の名前・画像・色は設定タブで変えられる（端末の中だけ）
+// ---- ③ EARN（レベル別の人数・APY）・④ Tier（魚分類）の割合（ドーナツと表）。Community（運営）の名前・画像・色はデータで配られる
 // 色：順序のある区分なので青1色の濃淡（暗い地では、低い区分ほど地に近い暗い青、高いほど明るい青）。運営（Community）・ランク外は灰色
 // （dataviz の検証：#184f95,#256abf,#3987e5,#6da7ec,#9ec5f4,#cde2fb,#eef5fe の7段を --ordinal --mode dark --surface #0c1428 で合格。
 //   いちばん濃い #184f95 は運営（Community）の標準の色と EARN の「利用あり」専用。区分（Tier・レベル）は残りの6段。#184f95 より濃い青は地に溶けて検証に通らない（2026-10）。灰色 #6b7488 は地に 3.9:1）
@@ -299,32 +299,6 @@ function renderShare(d, kind) {
   $('rankShareBox').replaceChildren(el('h2', {}, kind === 'rankShare' ? 'EARN利用者比率' : 'トークン配分内訳'), el('div', { class: 'donut-wrap' }, svg), el('div', { class: 'scroll' }, table));
 }
 
-// ---- Community（運営）の表示：名前・画像・色（設定タブ。端末の中だけに保存 'communityStyle'）
-let communityStyle = { name: '', image: '', color: '' };
+// ---- Community（運営）の表示：名前・色・画像はデータで配られる（views.js の communityStyle。取得エクセルの設定シートで決める）
 const comName = () => (communityStyle.name || '').trim() || 'Community';
 const comColor = () => (/^#[0-9a-f]{6}$/i.test(communityStyle.color || '') ? communityStyle.color : SHARE_DARKEST); // 標準はいちばん濃い色
-async function saveCommunity() { await putSetting('communityStyle', communityStyle); refreshAll(); }
-function renderCommunitySettings() {
-  if (!$('comName')) return;
-  if (document.activeElement !== $('comName')) $('comName').value = communityStyle.name || '';
-  $('comColor').value = comColor();
-  $('comImgPrev').replaceChildren(communityStyle.image ? el('img', { src: communityStyle.image, alt: '' }) : el('span', { class: 'muted' }, 'なし'));
-  $('comImgBtn').textContent = communityStyle.image ? '選び直す' : '画像を選ぶ';
-  $('comImgDel').hidden = !communityStyle.image;
-}
-$('comName').addEventListener('change', () => { communityStyle.name = $('comName').value.trim(); saveCommunity(); });
-$('comColor').addEventListener('change', () => { communityStyle.color = $('comColor').value; saveCommunity(); });
-$('comColorReset').addEventListener('click', () => { communityStyle.color = ''; saveCommunity(); });
-$('comImgBtn').addEventListener('click', () => { $('comImgFile').value = ''; $('comImgFile').click(); });
-$('comImgDel').addEventListener('click', () => { communityStyle.image = ''; saveCommunity(); });
-$('comImgFile').addEventListener('change', async () => {
-  const f = $('comImgFile').files[0];
-  if (!f) return;
-  try { communityStyle.image = await shrinkImage(f); await saveCommunity(); }
-  catch (e) { alert('この画像は読み込めませんでした（' + (e && e.message ? e.message : '形式が違います') + '）。JPEG や PNG の画像を選んでください。'); }
-});
-ESV.renderers.push(renderCommunitySettings);
-ESV.loaders.push(async () => {
-  const v = await getSetting('communityStyle');
-  communityStyle = Object.assign({ name: '', image: '', color: '' }, v && typeof v === 'object' ? v : {});
-});
