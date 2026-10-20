@@ -28,7 +28,7 @@ function renderTxTab(opts) {
     ...opts.clsList.map((cls) => {
       const rs = rows.filter((x) => x.cls === cls);
       const sum = (dir) => rs.filter((x) => x.dir === dir).reduce((a, x) => a + Number(opts.amountOf(x)), 0);
-      return el('tr', {}, el('td', {}, clsTag(cls)), td(String(rs.length), 1), td(hid(fmtAmount(sum('in'))), 1), td(hid(fmtAmount(sum('out'))), 1));
+      return el('tr', {}, el('td', {}, clsTag(cls)), td(String(rs.length), 1), td(hid(fmtDec1(sum('in'))), 1), td(hid(fmtDec1(sum('out'))), 1));
     }));
 
   // 絞り込みの選択肢
@@ -53,7 +53,7 @@ function renderTxTab(opts) {
   renderRecent(opts);
 }
 
-// 取引の一覧（配布先の取引・直近取引）の枚数は小数第1位まで（切り捨て。2026-10 ユーザー指示）
+// 取引タブの枚数（区分別の表・配布先の取引・直近取引）は小数第1位まで（切り捨て。2026-10 ユーザー指示）
 const fmtDec1 = (v) => (Math.floor(Number(v) * 10 + 1e-7) / 10).toLocaleString('ja-JP', { maximumFractionDigits: 1 });
 
 // コントラクト全体の直近取引（保有者ランキングを取得した時点の新しい 100 件）。まず 10 件、［さらに10件］で 10 件ずつ増やす
