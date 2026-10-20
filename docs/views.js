@@ -193,6 +193,7 @@ function renderRewardTab(who, showTotal = true, opts = {}) {
   const proj = { simple: Reward.project(split, rk, now, 'simple', months, w, wdFreq), compound: Reward.project(split, rk, now, 'compound', months, w, wdFreq) };
   const label = (p) => (p.month === 0 ? '今日' : p.month % 12 === 0 ? (p.month / 12) + '年後' : p.month + 'か月後') + '（' + fmtDay(p.t) + '）';
   const points = proj[rewardMode].map((p) => ({ v: target.share * p.g, label: label(p) }));
+  $('rewardTableTitle').textContent = simYears + '年後までの推移'; // 一覧の見出しは選んでいる期間に合わせる（2026-10 ユーザー指示）
   const step = simYears <= 1 ? 3 : simYears <= 5 ? 12 : 24; // 目盛り（1年は3か月ごと、5年までは1年ごと、10年は2年ごと）
   const ticks = [];
   for (let m = 0; m <= months; m += step) ticks.push([m, m === 0 ? '今日' : m % 12 === 0 ? (m / 12) + '年後' : m + 'か月']);
