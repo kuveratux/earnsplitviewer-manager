@@ -22,7 +22,7 @@ function renderTxTab(opts) {
   const split = rows.find((x) => x.cls === 'split');
   $('splitCard').replaceChildren(split
     ? el('div', { class: 'card' }, el('div', { class: 'sym' }, '預入（' + fmtDate(split.t) + '）'),
-      el('div', { class: 'kv kv-plain' }, ...kvRows(opts.splitRows(split).map(([k, v]) => [k, v]))))
+      el('div', { class: 'kv kv-plain' }, ...kvRows(opts.splitRows(split).map(([k, v]) => [k, showYen ? v : HIDDEN + ' ' + sym]))))
     : el('div', { class: 'card' }, el('div', { class: 'muted' }, '「EARN」に仕分けた取引はありません。')));
 
   // 区分別（件数・受取・送付）
@@ -33,7 +33,7 @@ function renderTxTab(opts) {
     ...opts.clsList.map((cls) => {
       const rs = rows.filter((x) => x.cls === cls);
       const sum = (dir) => rs.filter((x) => x.dir === dir).reduce((a, x) => a + Number(opts.amountOf(x)), 0);
-      return el('tr', {}, el('td', {}, clsTag(cls)), td(String(rs.length), 1), td(fmtAmount(sum('in')), 1), td(fmtAmount(sum('out')), 1));
+      return el('tr', {}, el('td', {}, clsTag(cls)), td(String(rs.length), 1), td(hid(fmtAmount(sum('in'))), 1), td(hid(fmtAmount(sum('out'))), 1));
     }));
 
   // 絞り込みの選択肢
@@ -50,7 +50,7 @@ function renderTxTab(opts) {
     return el('li', {},
       el('div', { class: 'tx-top' },
         el('span', { class: 'tx-date' }, fmtDate(x.t), clsTag(x.cls)),
-        el('span', { class: 'tx-amt ' + x.dir }, (x.dir === 'in' ? '+' : '−') + fmtAmount(opts.amountOf(x)) + ' ' + sym)),
+        el('span', { class: 'tx-amt ' + x.dir }, (x.dir === 'in' ? '+' : '−') + hid(fmtAmount(opts.amountOf(x))) + ' ' + sym)),
       el('button', { class: 'cp', type: 'button', onclick: () => openNameDialog(x.counterparty) },
         el('span', { class: 'cp-label' }, x.dir === 'in' ? '受取元：' : '送付先：'), nameOf(x.counterparty)),
       link ? el('div', {}, link) : null);
@@ -66,6 +66,8 @@ let rewardMode = 'simple';
 // 報酬タブの枚数は横幅を取らないよう切り捨てて表示する（ユーザー指示）
 // 大きい数字は整数、小さくなりうる「1日あたり」「期間の報酬」は小数2桁まで。計算の誤差（7199.9999…）で1つ少なく出ないよう、わずかに足してから切り捨てる
 const fmtInt = (v) => Math.floor(Number(v) + 1e-9).toLocaleString('ja-JP');
+// 表示・非表示（目のマーク。アプリ全体で1つ、2026-10）：隠すときは円の金額・％に加えて、自分の TUX の枚数・ランク情報・順位も「＊＊＊」にする
+const hid = (str) => (showYen ? str : HIDDEN);
 const fmtDec2 = (v) => (Math.floor(Number(v) * 100 + 1e-7) / 100).toLocaleString('ja-JP', { maximumFractionDigits: 2 });
 let rewardWho = '';
 
@@ -90,7 +92,7 @@ function renderRewardTab(who, showTotal = true, opts = {}) {
   const now = Math.floor(Date.now() / 1000);
   const rk = { old: ranks.old, new: ranks.new };
   const s = Reward.settled(split, rk, now);
-  const rankText = (r, rate) => (r ? r.name + ' ' + pct(rate) : 'ランク外 0%');
+  const rankText = (r, rate) => hid(r ? r.name + ' ' + pct(rate) : 'ランク外 0%');
 
   // 保有枚数（預入＋報酬）のカード。数字は資産タブの資産額と同じ大きさ。内訳は折りたたみ（起動時は開く）
   const multi = APP.id === 'manager'; // Manager は対象名を添える
@@ -100,12 +102,12 @@ function renderRewardTab(who, showTotal = true, opts = {}) {
   const md = (unix) => { const d = new Date((unix + 9 * 3600) * 1000); return (d.getUTCMonth() + 1) + '/' + d.getUTCDate(); };
   const oldLast = md(newStart - Reward.DAY);
   const newFirst = md(newStart);
-  $('rewardCards').replaceChildren(...(rewardList.length ? [] : [el('div', { class: 'card' }, el('p', { class: 'muted' }, '表示する対象がありません。「設定」の「保有枚数の表示」で選んでください。'))]), ...rewardList.map((w) => {
+  $('rewardCards').replaceChildren(...(rewardList.length ? [] : [el('div', { class: 'card' }, el('p', { class: 'muted' }, '表示する対象がありません。「設定」の「保有枚数の表示」で選んでください。'))]), ...rewardList.map((w, wi) => {
     const reward = w.share * s.factor;
     const rows = [
-      ['預入枚数', fmtInt(w.share) + ' ' + sym + (showTotal && w.share !== s.total ? '（' + pct(w.share / s.total) + '）' : '')],
+      ['預入枚数', hid(fmtInt(w.share)) + ' ' + sym + (showYen && showTotal && w.share !== s.total ? '（' + pct(w.share / s.total) + '）' : '')],
       // 報酬枚数：1行目に枚数、2行目に1日あたり
-      ['報酬枚数', el('span', {}, fmtInt(reward) + ' ' + sym, el('br'), el('span', { class: 'per-day' }, fmtDec2(w.share * s.rateNow / 365) + ' ' + sym + '/日'))],
+      ['報酬枚数', el('span', {}, hid(fmtInt(reward)) + ' ' + sym, el('br'), el('span', { class: 'per-day' }, hid(fmtDec2(w.share * s.rateNow / 365)) + ' ' + sym + '/日'))],
       ['預入日時', fmtDate(split.t)],
       ['経過日数', s.days + ' 日'],
       ['　旧ランク（〜' + oldLast + '）', rankText(s.rankOld, s.rateOld) + '（' + s.oldDays + ' 日）'],
@@ -120,7 +122,7 @@ function renderRewardTab(who, showTotal = true, opts = {}) {
     return el('div', { class: 'card asset-hero' },
       el('div', { class: 'sym' }, multi ? '保有枚数（' + labelOf_(w) + '）' : '保有枚数'),
       el('div', { class: 'hero-row' }, coinIcons[w.id] ? el('img', { class: 'coin-icon', src: coinIcons[w.id], alt: '' }) : null,
-        el('span', { class: 'hero-val' }, fmtInt(w.share + reward) + ' ' + sym)),
+        el('span', { class: 'hero-val' }, hid(fmtInt(w.share + reward)) + ' ' + sym), wi === 0 ? eyeButton() : null),
       el('div', { class: 'hero-folds' }, d));
   }));
 
@@ -153,8 +155,8 @@ function renderRewardTab(who, showTotal = true, opts = {}) {
   const freqJa = { day: '1日', week: '1週', month: '1か月', year: '1年' }[wdFreq];
   $('wdInfo').replaceChildren(...(!(wdYen > 0) ? ['年間希望報酬を入れると、必要な枚数を計算して引き出します。']
     : !(wdUnitPrice > 0) ? ['TUX価格を入力してください。']
-    : ['必要な枚数：年間 ' + fmtDec2(withdraw) + ' ' + sym + (holding > 0 ? '（今日の保有枚数の ' + (withdraw / holding * 100).toFixed(1) + '%）' : ''), el('br'),
-      freqJa + 'に ' + fmtDec2(withdraw / perYear) + ' ' + sym]));
+    : ['必要な枚数：年間 ' + hid(fmtDec2(withdraw)) + ' ' + sym + (showYen && holding > 0 ? '（今日の保有枚数の ' + (withdraw / holding * 100).toFixed(1) + '%）' : ''), el('br'),
+      freqJa + 'に ' + hid(fmtDec2(withdraw / perYear)) + ' ' + sym]));
   const months = simYears * 12;
   const w = target.share > 0 ? withdraw / target.share : 0;
   const proj = { simple: Reward.project(split, rk, now, 'simple', months, w, wdFreq), compound: Reward.project(split, rk, now, 'compound', months, w, wdFreq) };
@@ -163,10 +165,14 @@ function renderRewardTab(who, showTotal = true, opts = {}) {
   const step = simYears <= 1 ? 3 : simYears <= 5 ? 12 : 24; // 目盛り（1年は3か月ごと、5年までは1年ごと、10年は2年ごと）
   const ticks = [];
   for (let m = 0; m <= months; m += step) ticks.push([m, m === 0 ? '今日' : m % 12 === 0 ? (m / 12) + '年後' : m + 'か月']);
-  drawLineChart($('rewardChart'), points, {
-    unit: sym, fmt: fmtInt, xTicks: ticks,
-    title: target.name + ' の枚数の見込み（' + (rewardMode === 'simple' ? '単利' : '複利') + '・' + simYears + '年）',
-  });
+  if (showYen) {
+    drawLineChart($('rewardChart'), points, {
+      unit: sym, fmt: fmtInt, xTicks: ticks,
+      title: target.name + ' の枚数の見込み（' + (rewardMode === 'simple' ? '単利' : '複利') + '・' + simYears + '年）',
+    });
+  } else {
+    $('rewardChart').replaceChildren(el('div', { class: 'chart-hidden' }, '枚数を非表示にしています（目のマークで表示）'));
+  }
 
   // 一覧：今日と、1年後〜選んだ年数後まで1年ごと
   const th = (t, n) => el('th', n ? { class: 'n' } : {}, t);
@@ -175,7 +181,7 @@ function renderRewardTab(who, showTotal = true, opts = {}) {
   for (let y = 0; y <= simYears; y++) rows.push(y * 12);
   $('rewardTable').replaceChildren(
     el('tr', {}, th('時点'), th('単利', 1), th('複利', 1)),
-    ...rows.map((m) => el('tr', {}, td(label(proj.simple[m])), td(fmtInt(target.share * proj.simple[m].g) + ' ' + sym, 1), td(fmtInt(target.share * proj.compound[m].g) + ' ' + sym, 1))));
+    ...rows.map((m) => el('tr', {}, td(label(proj.simple[m])), td(hid(fmtInt(target.share * proj.simple[m].g)) + ' ' + sym, 1), td(hid(fmtInt(target.share * proj.compound[m].g)) + ' ' + sym, 1))));
 }
 
 //--------------------------------------------------------------
@@ -185,7 +191,7 @@ function renderRewardTab(who, showTotal = true, opts = {}) {
 // ・購入分の平均単価＝購入金額の合計÷購入枚数の合計、総枚数の平均単価＝購入金額の合計÷総枚数（預入＋報酬）
 // ・資産額＝総枚数×価格、含み損益＝資産額−購入金額の合計
 // ・試算価格：価格が変わった場合の資産額・含み損益を見る（端末ごとに保存。空欄なら現在価格）
-// ・［金額を表示］をオフにすると、円の金額を「＊＊＊」で隠す（枚数は表示したまま。端末ごとに保存）
+// ・目のマークで、円の金額・％と自分の枚数・ランク情報・順位を「＊＊＊」で隠す（ホーム・報酬・ランキングのどこからでも切り替え。端末ごとに保存）
 // ・報酬（日・週・月・年）は今の年利で計算した目安。月＝年÷12
 //--------------------------------------------------------------
 let trialPrice = 0;
@@ -227,10 +233,7 @@ function renderAsset(who, s, all = who) {
   const gain = (c, pr) => (c.cost > 0 ? signedYen(c.coins * pr - c.cost) + '（' + signedPct((c.coins * pr - c.cost) / c.cost) + '）' : na);
 
   // 一番上：資産額（Manager は合算、Agent は自分）と目のマーク
-  const eye = $('eyeBtn');
-  eye.innerHTML = showYen ? EYE_ON : EYE_OFF; // 固定の図形だけ（データは入れない）
-  eye.setAttribute('aria-pressed', String(showYen));
-  eye.setAttribute('aria-label', showYen ? '金額を隠す' : '金額を表示する');
+  paintEye($('eyeBtn'));
   if (!who.length) {
     $('heroLabel').textContent = '資産額';
     $('heroValue').textContent = '—';
@@ -247,9 +250,9 @@ function renderAsset(who, s, all = who) {
   $('assetList').replaceChildren(...who.map((w) => {
     const c = calc(w);
     const rows = [
-      ['総枚数（預入＋報酬）', fmtInt(c.coins) + ' ' + sym],
-      ['報酬枚数', fmtInt(w.share * s.factor) + ' ' + sym],
-      ['購入枚数', c.buys.length ? fmtInt(c.qty) + ' ' + sym : '購入の記録なし'],
+      ['総枚数（預入＋報酬）', hid(fmtInt(c.coins)) + ' ' + sym],
+      ['報酬枚数', hid(fmtInt(w.share * s.factor)) + ' ' + sym],
+      ['購入枚数', c.buys.length ? hid(fmtInt(c.qty)) + ' ' + sym : '購入の記録なし'],
       ['購入金額', c.buys.length ? yen(c.cost) : na],
       ['購入分の平均単価', c.qty > 0 ? yenUnit(c.cost / c.qty) : na],
       ['総枚数の平均単価', c.coins > 0 && c.buys.length ? yenUnit(c.cost / c.coins) : na],
@@ -257,7 +260,7 @@ function renderAsset(who, s, all = who) {
     // 見出し：Manager は対象の名前と資産額、Agent は「内訳」だけ（一番上の資産額と同じなので）
     const multi = APP.id === 'manager';
     const d = el('details', { class: 'fold' },
-      el('summary', {}, el('span', {}, multi ? w.name : '内訳'), multi ? el('span', { class: 'fold-val' }, price ? yen(c.coins * price) : fmtInt(c.coins) + ' ' + sym) : null),
+      el('summary', {}, el('span', {}, multi ? w.name : '内訳'), multi ? el('span', { class: 'fold-val' }, price ? yen(c.coins * price) : hid(fmtInt(c.coins)) + ' ' + sym) : null),
       el('div', { class: 'fold-body' }, el('div', { class: 'kv kv-plain' }, ...kvRows(rows))));
     d.open = !closedFolds.has(w.id);
     d.addEventListener('toggle', () => { if (d.open) closedFolds.delete(w.id); else closedFolds.add(w.id); });
@@ -272,7 +275,7 @@ function renderAsset(who, s, all = who) {
     const td = (t, n) => el('td', n ? { class: 'n' } : {}, t);
     $('buyList').replaceChildren(
       el('tr', {}, th('購入日'), th('枚数', 1), th('単価', 1), th('購入金額', 1)),
-      ...(list.length ? list.map((p) => el('tr', {}, td(p.date.replace(/-/g, '/')), td(fmtInt(p.qty), 1), td(yenUnit(p.unit), 1), td(yen(p.amount), 1)))
+      ...(list.length ? list.map((p) => el('tr', {}, td(p.date.replace(/-/g, '/')), td(hid(fmtInt(p.qty)), 1), td(yenUnit(p.unit), 1), td(yen(p.amount), 1)))
         : [el('tr', {}, el('td', { colspan: '4' }, '購入の記録はありません'))]));
   }
 
@@ -281,7 +284,7 @@ function renderAsset(who, s, all = who) {
   $('trialInput').placeholder = '例：' + String(examplePrice);
   document.querySelectorAll('#periodSeg button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.period === assetPeriod)));
   $('assetPrice').textContent = '現在価格：' + (price ? yenUnit(price) : '未設定');
-  $('rateNow').textContent = s.rankNow ? s.rankNow.name + ' ' + pct(s.rateNow) : 'ランク外 0%';
+  $('rateNow').textContent = hid(s.rankNow ? s.rankNow.name + ' ' + pct(s.rateNow) : 'ランク外 0%');
   if ($('simSel')) {
     // 名前が変わったときにも作り直す
     const names = all.map((w) => w.name).join('|');
@@ -298,8 +301,8 @@ function renderAsset(who, s, all = who) {
   const col = (pr) => pr
     ? [cell(yen(c.coins * pr), unitOf(c.coins * pr)),
       cell(c.cost > 0 ? signedYen(c.coins * pr - c.cost) : na, c.cost > 0 ? unitOf(c.coins * pr - c.cost, true) : null, c.cost > 0 ? signedPct((c.coins * pr - c.cost) / c.cost) : null),
-      cell(yen(c.reward * pr), unitOf(c.reward * pr), fmtDec2(c.reward) + ' ' + sym)]
-    : [cell(na), cell(na), cell(na, fmtDec2(c.reward) + ' ' + sym)];
+      cell(yen(c.reward * pr), unitOf(c.reward * pr), hid(fmtDec2(c.reward)) + ' ' + sym)]
+    : [cell(na), cell(na), cell(na, hid(fmtDec2(c.reward)) + ' ' + sym)];
   const now = col(price);
   const tri = col(trial);
   // 期間のボタンとランクは、含み損益と報酬の行の間に置く（ボタンは左、ランクは表の右端）。画面に1つずつある部品を、行に移して使う
@@ -317,7 +320,19 @@ function renderAsset(who, s, all = who) {
 // 目のマーク：押すたびに、タブ内の円の金額の表示・非表示を切り替える
 const EYE_ON = '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="2"/></svg>';
 const EYE_OFF = '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M2 12s3.6-7 10-7c2 0 3.8.7 5.3 1.7M22 12s-3.6 7-10 7c-2 0-3.8-.7-5.3-1.7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M3 3l18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
-$('eyeBtn').addEventListener('click', async () => { showYen = !showYen; await putSetting('showYen', showYen); refreshAll(); });
+// 目のマーク（ホーム・報酬・ランキングに置く。どこで押してもアプリ全体の表示・非表示が切り替わる）
+function paintEye(b) {
+  b.innerHTML = showYen ? EYE_ON : EYE_OFF; // 固定の図形だけ（データは入れない）
+  b.setAttribute('aria-pressed', String(showYen));
+  b.setAttribute('aria-label', showYen ? '金額・枚数を隠す' : '金額・枚数を表示する');
+}
+function eyeButton() { const b = el('button', { type: 'button', class: 'eye eye-toggle' }); paintEye(b); return b; }
+document.addEventListener('click', async (e) => {
+  if (!e.target.closest('.eye-toggle')) return;
+  showYen = !showYen;
+  await putSetting('showYen', showYen);
+  refreshAll();
+});
 $('trialInput').addEventListener('change', async () => {
   const v = Number($('trialInput').value);
   trialPrice = Number.isFinite(v) && v > 0 ? v : 0;

@@ -95,7 +95,7 @@ function renderRankingTab(targets) {
   // 一番上：保有枚数と推定順位（Manager 分・Agent 分は一覧の中の順位、合算はほかの保有者と比べた順位）
   const multi = APP.id === 'manager';
   $('rankCards').replaceChildren(...(targets.length ? [] : [el('div', { class: 'card' }, el('p', { class: 'muted' }, split ? '表示する対象がありません。「設定」の「保有枚数の表示」で選んでください。' : '「EARN」に仕分けた取引がないため、保有枚数はありません。'))]),
-    ...targets.map((w) => {
+    ...targets.map((w, wi) => {
       // 保有枚数：分配＋報酬。Manager 分と合算には配布先の手元も入れる
       const amount = w.share + w.share * s.factor + (w.id === 'agent' ? 0 : selfWallet);
       const mergedRow = merged ? holders.find((r) => r.address === selfAddr) : null;
@@ -108,11 +108,11 @@ function renderRankingTab(targets) {
       return el('div', { class: 'card asset-hero rank-me' },
         el('div', { class: 'sym' }, multi ? '保有枚数（' + labelOf_(w) + '）' : '保有枚数'),
         el('div', { class: 'hero-row' }, coinIcons[w.id] ? el('img', { class: 'coin-icon', src: coinIcons[w.id], alt: '' }) : null,
-          el('span', { class: 'hero-val' }, fmtInt(shownAmount) + ' ' + sym)),
-        el('div', { class: 'rank-est' }, fishBadge(f, true),
-          el('div', {}, el(canJump ? 'button' : 'div', { class: 'rank-est-no' + (canJump ? ' jump' : ''), type: 'button', onclick: canJump ? () => jumpToRank(w.id) : null },
-            '推定 ', el('b', {}, est.toLocaleString('ja-JP') + '位'), el('span', { class: 'muted' }, '（全 ' + of.toLocaleString('ja-JP') + '人中）')),
-            el('div', { class: 'muted' }, f + '（' + FISH_JA[f] + '）・総供給量の ' + (shownAmount / v.supply * 100).toFixed(3) + '%'))));
+          el('span', { class: 'hero-val' }, hid(fmtInt(shownAmount)) + ' ' + sym), wi === 0 ? eyeButton() : null),
+        el('div', { class: 'rank-est' }, showYen ? fishBadge(f, true) : el('span', { class: 'fish big hidden-fish' }, '？'),
+          el('div', {}, el(canJump && showYen ? 'button' : 'div', { class: 'rank-est-no' + (canJump && showYen ? ' jump' : ''), type: 'button', onclick: canJump && showYen ? () => jumpToRank(w.id) : null },
+            '推定 ', el('b', {}, hid(est.toLocaleString('ja-JP')) + '位'), el('span', { class: 'muted' }, '（全 ' + of.toLocaleString('ja-JP') + '人中）')),
+            el('div', { class: 'muted' }, showYen ? f + '（' + FISH_JA[f] + '）・総供給量の ' + (shownAmount / v.supply * 100).toFixed(3) + '%' : HIDDEN))));
     }));
 
   // ① 保有者ランキング／② 預入ランキング／③ EARN（ランク＝レベル別の人数）／④ Tier（魚分類）の割合
