@@ -410,8 +410,14 @@ table.grid.sim td.n { text-align: center; }
 .donut-emoji { font-size: 40px; }
 .share-table .share-img { height: 16px; max-width: 48px; vertical-align: -3px; } /* 1.8.3：ほかの Tier の文字の高さに合わせる */
 /* 2026-10：取引タブの折りたたみ（配布先の取引・直近取引）。中身はカードの外に並べる */
-.tx-fold > .fold-body { background: transparent; border: 0; padding: 4px 0 0; }
-.tx-fold > summary { font-size: 16px; } .tx-fold[open] > summary { border-radius: 10px; border-bottom-width: 1px; border-bottom-style: solid; }
+/* 資産額の枠と同じ大きな枠（カード）の中に、見出し（押すと開閉）と中身を入れる */
+.tx-fold { padding: 0; }
+.tx-fold > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 16px; padding: 12px; }
+.tx-fold > summary::-webkit-details-marker { display: none; }
+.tx-fold > summary::before { content: '▸'; color: var(--muted); }
+.tx-fold[open] > summary::before { content: '▾'; }
+.tx-fold > .tx-body { padding: 0 12px 12px; }
+.tx-fold > .tx-body > .sec:first-child { margin-top: 0; }
 .recent-route { font-size: 13px; overflow-wrap: anywhere; }
 .txlist li.mine .recent-route { font-weight: 600; }
 .recent-more { text-align: center; margin: 10px 0; }

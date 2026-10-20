@@ -69,9 +69,9 @@
     </div>
     <div class="whenData" hidden>
       <!-- 配布先の取引（起動時は開く） -->
-      <details class="fold tx-fold" open>
+      <details class="card tx-fold" open>
         <summary><span id="mineTitle">配布先の取引</span></summary>
-        <div class="fold-body">
+        <div class="tx-body">
           <h2 class="sec">区分別</h2>
           <div class="scroll"><table id="clsTable" class="grid"></table></div>
           <h2 class="sec">取引履歴</h2>
@@ -90,9 +90,9 @@
         </div>
       </details>
       <!-- コントラクト全体の直近取引（起動時は閉じる。10 件ずつ、100 件まで） -->
-      <details class="fold tx-fold">
+      <details class="card tx-fold">
         <summary><span id="recentTitle">直近取引</span></summary>
-        <div class="fold-body">
+        <div class="tx-body">
           <p id="recentNote" class="muted"></p>
           <ul id="recentList" class="txlist"></ul>
           <div class="recent-more"><button id="recentMore" type="button">さらに10件</button></div>
