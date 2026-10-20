@@ -292,9 +292,13 @@ function renderAsset(who, s, all = who) {
   const target = all.find((w) => w.id === simWho) || all[0];
   const c = calc(target);
   const th = (t, n) => el('th', n ? { class: 'n' } : {}, t);
-  const cell = (main, sub) => el('td', { class: 'n' }, main, sub ? el('div', { class: 'sim-sub' }, sub) : null);
+  const cell = (main, ...subs) => el('td', { class: 'n' }, main, ...subs.filter(Boolean).map((x) => el('div', { class: 'sim-sub' }, x)));
+  // 金額の下に括弧付きで ○○万円・○.○億円（1万円未満〔絶対値〕・金額を隠しているときは出さない）
+  const unitOf = (v, signed) => (showYen && Math.abs(v) >= 1e4 ? '（' + (signed ? (v >= 0 ? '+' : '−') : '') + yenUnitText(Math.abs(v)) + '）' : null);
   const col = (pr) => pr
-    ? [cell(yen(c.coins * pr), showYen && c.coins * pr >= 1e4 ? '（' + yenUnitText(c.coins * pr) + '）' : null), cell(c.cost > 0 ? signedYen(c.coins * pr - c.cost) : na, c.cost > 0 ? signedPct((c.coins * pr - c.cost) / c.cost) : null), cell(yen(c.reward * pr), fmtDec2(c.reward) + ' ' + sym)]
+    ? [cell(yen(c.coins * pr), unitOf(c.coins * pr)),
+      cell(c.cost > 0 ? signedYen(c.coins * pr - c.cost) : na, c.cost > 0 ? unitOf(c.coins * pr - c.cost, true) : null, c.cost > 0 ? signedPct((c.coins * pr - c.cost) / c.cost) : null),
+      cell(yen(c.reward * pr), unitOf(c.reward * pr), fmtDec2(c.reward) + ' ' + sym)]
     : [cell(na), cell(na), cell(na, fmtDec2(c.reward) + ' ' + sym)];
   const now = col(price);
   const tri = col(trial);
