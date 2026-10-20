@@ -408,4 +408,4 @@ table.grid.sim td.n { text-align: center; }
 .share-table td.num { text-align: center; }
 /* 1.8.2：トークン配分内訳の真ん中の絵文字、表の運営の画像（画像だけのときは少し大きく） */
 .donut-emoji { font-size: 40px; }
-.share-table .share-img { height: 22px; max-width: 64px; }
+.share-table .share-img { height: 16px; max-width: 48px; vertical-align: -3px; } /* 1.8.3：ほかの Tier の文字の高さに合わせる */
