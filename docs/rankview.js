@@ -14,7 +14,7 @@
 const FISH_EMOJI = { Whale: '🐳', Shark: '🦈', Dolphin: '🐬', Fish: '🐟', Crab: '🦀', Shrimp: '🦐' };
 const FISH_JA = Object.fromEntries(Fish.CLASSES.map((c) => [c.name, c.ja]));
 const RANK_PAGE = 100; // 一度に出す件数（「さらに表示」で増やす）
-let rankListKind = 'holders';
+let rankListKind = 'holders'; // 起動時は保有者の順位（端末に保存しない）
 let rankShown = RANK_PAGE;
 let rankCache = { key: '', view: null };
 let rankSelfName = ''; // Agent アプリ：ランキングでの自分の表示名（空欄なら「自分」。端末の中だけ）
@@ -99,9 +99,14 @@ function renderRankingTab(targets) {
       // 保有枚数：分配＋報酬。Manager 分と合算には配布先の手元も入れる
       const amount = w.share + w.share * s.factor + (w.id === 'agent' ? 0 : selfWallet);
       const mergedRow = merged ? holders.find((r) => r.address === selfAddr) : null;
-      const row = merged ? holders.find((r) => r.address === selfAddr) : holders.find((r) => r.split && r.split.id === w.id);
-      const est = row ? row.no : others.filter((h) => h.total > amount).length + 1;
-      const of = row ? holders.length : others.length + 1;
+      // 推定順位は選んでいる枠に合わせる（2026-10 ユーザー指示）：保有者＝保有者全体の中（手元＋元本＋報酬）、EARN＝EARN 利用者の中（元本＋報酬）
+      const earn = rankListKind === 'depositors' || rankListKind === 'rankShare';
+      const list = earn ? depositors : holders;
+      const row = merged ? list.find((r) => r.address === selfAddr) : list.find((r) => r.split && r.split.id === w.id);
+      const base = earn ? v.depositors.filter((h) => h.address !== self) : others;
+      const cmpAmount = earn ? w.share + w.share * s.factor : amount;
+      const est = row ? row.no : base.filter((h) => h.total > cmpAmount).length + 1;
+      const of = row ? list.length : base.length + 1;
       const canJump = row && (merged || row.split.show);
       const shownAmount = mergedRow ? mergedRow.total : amount;
       const f = Fish.classify(shownAmount, v.supply).name;
@@ -110,8 +115,8 @@ function renderRankingTab(targets) {
         el('div', { class: 'hero-row' }, coinIcons[w.id] ? el('img', { class: 'coin-icon', src: coinIcons[w.id], alt: '' }) : null,
           el('span', { class: 'hero-val' }, hid(fmtInt(shownAmount)) + ' ' + sym), wi === 0 ? eyeButton() : null),
         el('div', { class: 'rank-est' }, showYen ? fishBadge(f, true) : el('span', { class: 'fish big hidden-fish' }, '？'),
-          el('div', {}, el(canJump && showYen ? 'button' : 'div', { class: 'rank-est-no' + (canJump && showYen ? ' jump' : ''), type: 'button', onclick: canJump && showYen ? () => jumpToRank(w.id) : null },
-            '推定 ', el('b', {}, hid(est.toLocaleString('ja-JP')) + '位'), el('span', { class: 'muted' }, '（全 ' + of.toLocaleString('ja-JP') + '人中）')),
+          el('div', {}, el(canJump && showYen ? 'button' : 'div', { class: 'rank-est-no' + (canJump && showYen ? ' jump' : ''), type: 'button', onclick: canJump && showYen ? () => jumpToRank(w.id, earn ? 'depositors' : 'holders') : null },
+            '推定 ', el('b', {}, hid(est.toLocaleString('ja-JP')) + '位'), el('span', { class: 'muted' }, '（' + (earn ? 'EARN利用者' : '全保有者') + '：' + of.toLocaleString('ja-JP') + '人中）')),
             el('div', { class: 'muted' }, showYen ? f + '（' + FISH_JA[f] + '）・総供給量の ' + (shownAmount / v.supply * 100).toFixed(3) + '%' : HIDDEN))));
     }));
 
@@ -155,9 +160,9 @@ function renderRankingTab(targets) {
   }
 }
 
-// 推定順位を押したとき：保有者ランキングに切り替え、その行が出るまで表示を広げてから移る
-function jumpToRank(id) {
-  rankListKind = 'holders';
+// 推定順位を押したとき：その順位の一覧（保有者または EARN）に切り替え、その行が出るまで表示を広げてから移る
+function jumpToRank(id, kind = 'holders') {
+  rankListKind = kind;
   const li = () => document.querySelector('#rankList li[data-split="' + id + '"]');
   rankJump = id;
   rankShown = Math.max(rankShown, RANK_PAGE);
