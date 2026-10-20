@@ -184,10 +184,12 @@ function renderRewardTab(who, showTotal = true, opts = {}) {
   const withdraw = wdYen > 0 && wdUnitPrice > 0 ? wdYen / wdUnitPrice : 0; // 年間の枚数
   const perYear = { day: 365, week: 52, month: 12, year: 1 }[wdFreq];
   const freqJa = { day: '1日', week: '1週', month: '1か月', year: '1年' }[wdFreq];
-  $('wdInfo').replaceChildren(...(!(wdYen > 0) ? ['年間希望報酬を入れると、必要な枚数を計算して引き出します。']
+  // 年間希望報酬が空欄のときは何も出さない（初めの説明はなくした。2026-10 ユーザー指示）
+  $('wdInfo').replaceChildren(...(!(wdYen > 0) ? []
     : !(wdUnitPrice > 0) ? ['TUX価格を入力してください。']
     : ['必要な枚数：年間 ' + hid(fmtDec2(withdraw)) + ' ' + sym + (showYen && holding > 0 ? '（今日の保有枚数の ' + (withdraw / holding * 100).toFixed(1) + '%）' : ''), el('br'),
       freqJa + 'に ' + hid(fmtDec2(withdraw / perYear)) + ' ' + sym]));
+  $('wdInfo').hidden = !$('wdInfo').textContent;
   const months = simYears * 12;
   const w = target.share > 0 ? withdraw / target.share : 0;
   const proj = { simple: Reward.project(split, rk, now, 'simple', months, w, wdFreq), compound: Reward.project(split, rk, now, 'compound', months, w, wdFreq) };
