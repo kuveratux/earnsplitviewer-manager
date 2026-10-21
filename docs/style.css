@@ -506,3 +506,7 @@ html { touch-action: manipulation; }
 input:not([type=checkbox]):not([type=radio]):not([type=color]):not([type=file]):not([type=range]), select, textarea { font-size: 16px !important; }
 /* 16px にした分、試算価格・TUX価格の欄を少し広げる（「例：15」が窮屈にならないように） */
 .trial-row input { width: calc(7ch + 10px); }
+/* 工程表 E-01：トークン配分内訳の範囲の切り替え（トークン全体／保有者のみ。EARN VIEWER 1.0.5 と同じ） */
+.share-scope { display: flex; width: 100%; margin: 4px 0 6px; }
+.share-scope button { flex: 1; padding: 6px 8px; font-size: 13px; }
+.share-note { margin: 0 0 4px; font-size: 12px; }

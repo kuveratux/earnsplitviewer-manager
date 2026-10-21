@@ -11,6 +11,17 @@ const $ = (id) => document.getElementById(id);
 let data = null;     // 読み込んだデータ（復号後）
 let dataMeta = null; // { fileName, source, importedAt }
 let ranks = { old: null, new: null }; // ランク表（旧・新）：{ ranks, startDate, generatedAt, fileName }
+
+// TEEP（工程表 E-04、2.3）：esv-data version 4 のランク表は TEEP を掛ける前の表の値。data.teep { name, rate }（rate は 1＝100%）は
+// ESV の TEEP が設定されているときだけ入る（なければ 100%）。version 3 のランク表は掛けた後の値なので、何も掛けない
+const teepRate = () => (data && data.version >= 4 && data.teep && Number(data.teep.rate) > 0 ? Number(data.teep.rate) : 1);
+// 自分（Manager 分・Agent 分）の報酬の計算に使うランク表：新ランク表の年利に TEEP の倍率を掛ける（旧ランク表には掛けない。ランクの境目は同じ）
+// ランキングのほかの保有者は ranks（掛ける前の表）のまま計算する
+function rewardRanks() {
+  const k = teepRate();
+  if (k === 1 || !ranks.new) return { old: ranks.old, new: ranks.new };
+  return { old: ranks.old, new: { ...ranks.new, ranks: ranks.new.ranks.map((r) => ({ ...r, rate: r.rate * k })) } };
+}
 let hooks = { render() {}, describe() { return ''; } };
 
 //--------------------------------------------------------------
@@ -74,11 +85,21 @@ const delSetting = (key) => dbRun('readwrite', (s) => s.delete(key));
 //--------------------------------------------------------------
 const SCOPE_LABEL = { manager: 'Manager', agent: 'Agent' };
 
+// このアプリが読めるデータの版（esv-data の version）と、暗号化したファイルの外側の版（esv-data-enc の version）
+// これより新しい版は「アプリの更新が必要」と出す（工程表 E-02、EARN 系の互換性のルール3。2.3）
+const DATA_VERSION_MAX = 4; // 2.3 で 4（TEEP を掛ける前のランク表＋teep。工程表 E-04）
+const ENC_VERSION_MAX = 1;
+const NEWER_DATA_MSG = 'このデータは新しい版のアプリ用に作られています。設定タブの［更新を確認］でアプリを更新してから、もう一度読み込んでください';
+const newerDataError = () => Object.assign(new Error(NEWER_DATA_MSG), { newer: true });
+
 function validateData(d) {
   if (!d || d.format !== 'esv-data' || !d.generatedAt) throw new Error('EARN SPLIT VIEWER のデータファイルではありません');
-  if (d.version !== 2 && d.version !== 3) throw new Error('古い形式のデータファイルです。取得エクセルの［ビューア用ファイルを作成］で作り直してください');
-  // version 3：ランク表（旧・新・新ランク表の開始日）がデータの中にある
-  if (d.version === 3) {
+  if (typeof d.version === 'number' && d.version > DATA_VERSION_MAX) throw newerDataError();
+  if (d.version !== 2 && d.version !== 3 && d.version !== 4) throw new Error('古い形式のデータファイルです。取得エクセルの［ビューア用ファイルを作成］で作り直してください');
+  // version 4：teep はあってもなくてもよい（ないときは 100%）。あるときは倍率が数字であること
+  if (d.version === 4 && d.teep != null && !(typeof d.teep === 'object' && Number.isFinite(d.teep.rate) && d.teep.rate > 0)) throw new Error('データファイルの TEEP の形式が違います');
+  // version 3・4：ランク表（旧・新・新ランク表の開始日）がデータの中にある
+  if (d.version >= 3) {
     const r = d.ranks;
     if (!r || !Array.isArray(r.old) || !r.old.length || !Array.isArray(r.new) || !r.new.length || !/^\d{4}-\d{2}-\d{2}$/.test(r.newStartDate || '')) throw new Error('データファイルのランク表の形式が違います');
   }
@@ -118,6 +139,7 @@ function askPassphrase() {
 // 暗号化されていれば復号する。保存済みの合言葉を先に試し、だめなら入力を求める。キャンセル時は null
 async function decryptIfNeeded(json) {
   if (json.format !== 'esv-data-enc') return json;
+  if (typeof json.version === 'number' && json.version > ENC_VERSION_MAX) throw newerDataError();
   const saved = await getSetting('passphrase');
   if (saved) {
     try { return await decryptData(json, saved); } catch { /* 合言葉が変わった → 入力を求める */ }
@@ -140,7 +162,7 @@ async function decryptIfNeeded(json) {
 
 async function loadSavedData() {
   const saved = await getSetting('current');
-  if (saved && saved.data && [2, 3].includes(saved.data.version)) { data = saved.data; dataMeta = saved.meta; }
+  if (saved && saved.data && [2, 3, 4].includes(saved.data.version)) { data = saved.data; dataMeta = saved.meta; }
   ranks.old = (await getSetting('rankOld')) || null;
   ranks.new = (await getSetting('rankNew')) || null;
 }
@@ -173,8 +195,8 @@ async function importText(text, fileName, source) {
     return 'データは最新です（作成：' + fmtJst(json.generatedAt) + '）';
   }
   const meta = { fileName, source, importedAt: new Date().toISOString() };
-  // version 3：データの中のランク表を、これまでと同じ保存場所（rankOld・rankNew）に入れる（報酬の計算はそのまま）
-  if (json.version === 3) {
+  // version 3・4：データの中のランク表を、これまでと同じ保存場所（rankOld・rankNew）に入れる（version 4 は掛ける前の値。TEEP は rewardRanks で掛ける）
+  if (json.version >= 3) {
     const at = { generatedAt: json.generatedAt, fileName, importedAt: meta.importedAt };
     ranks.old = { ranks: json.ranks.old, startDate: '', ...at };
     ranks.new = { ranks: json.ranks.new, startDate: json.ranks.newStartDate, ...at };
@@ -621,7 +643,7 @@ function toast(msg) {
   t.textContent = msg;
   t.classList.add('show');
   clearTimeout(toast.timer);
-  toast.timer = setTimeout(() => t.classList.remove('show'), 4000);
+  toast.timer = setTimeout(() => t.classList.remove('show'), Math.max(4000, String(msg).length * 110)); // 長い知らせは長めに出す（2.3）
 }
 
 // manual：［最新データを取得］から呼んだとき（結果を必ず知らせる）
@@ -633,6 +655,7 @@ async function checkPublic(manual = false) {
   lastPublicCheck = Date.now();
   driveBusy = true;
   let msg = null;
+  let seenMd5 = ''; // 読み込もうとしたファイルの目印（新しい版のデータで止まったときに、同じファイルでは知らせ直さないため）
   try {
     let meta;
     try {
@@ -649,6 +672,7 @@ async function checkPublic(manual = false) {
     if (data && file.md5 && meta.md5Checksum === file.md5) { if (manual) msg = 'データは最新です（作成：' + fmtShortJst(data.generatedAt) + '）'; return; }
     if (!manual && meta.md5Checksum === skipMd5) return;
     if (manual) $('status').textContent = '取得中…';
+    seenMd5 = meta.md5Checksum;
     const text = await Drive.publicText(file.id);
     lastImportKind = null;
     const r = await importText(text, meta.name, 'drive');
@@ -659,6 +683,7 @@ async function checkPublic(manual = false) {
     msg = /^データは最新/.test(r || '') ? (manual ? r : null) : '新しいデータを読み込みました（作成：' + fmtShortJst(data.generatedAt) + '）';
   } catch (err) {
     if (manual) msg = err.message;
+    else if (err.newer) { msg = err.message; skipMd5 = seenMd5; } // 新しい版のデータ：自動の確認でも知らせる（1回だけ）
   } finally {
     driveBusy = false;
     renderDriveInfo();

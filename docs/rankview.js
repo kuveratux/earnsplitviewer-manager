@@ -19,11 +19,13 @@ let rankShown = RANK_PAGE;
 let rankCache = { key: '', view: null };
 let rankSelfName = ''; // Agent アプリ：ランキングでの自分の表示名（空欄なら「自分」。端末の中だけ）
 let rankJump = null;   // 推定順位を押したときに移る行（分配の行の id）
+let fishScope = 'all'; // トークン配分内訳の範囲：'all'＝運営を含むトークン全体、'holders'＝保有者だけ（運営を除く）。保存しない（工程表 E-01、EARN VIEWER 1.0.5 から取り込み）
 
 // 開いた時点（分単位）の4つの観点。同じ分のうちは作り直さない
 function rankingView(now) {
   const rg = data.ranking;
-  const key = rg.generatedAt + '|' + Math.floor(now / 60) + '|' + ranks.old.generatedAt + '|' + ranks.new.startDate;
+  // ランク表の年利も目印に入れる（同じ作成日時のデータでもランク表が違えば作り直す。工程表 E-04 の試験で見つけた）
+  const key = rg.generatedAt + '|' + Math.floor(now / 60) + '|' + ranks.old.generatedAt + '|' + ranks.new.startDate + '|' + [...ranks.old.ranks, ...ranks.new.ranks].map((r) => r.min + ':' + r.rate).join(',');
   if (rankCache.key !== key) {
     const src = { ...rg.source, ranks: { old: { ranks: ranks.old.ranks }, new: { ranks: ranks.new.ranks, startDate: ranks.new.startDate } } };
     rankCache = { key, view: Report.build(src, now) };
@@ -107,7 +109,8 @@ function renderRankingTab(targets) {
   const merged = APP.id === 'manager' && targets.length > 0 && targets.every((w) => w.id === 'total');
   const selfAddr = split ? (rg.self || '').toLowerCase() : '';
   const self = merged ? '' : selfAddr; // 一覧から外す行
-  const s = split ? Reward.settled(split, { old: ranks.old, new: ranks.new }, now) : null;
+  // 自分（Manager 分・Agent 分）の報酬は TEEP を掛けた表で。ほかの保有者は rankingView の中で掛ける前の表のまま（version 4 のとき。工程表 E-04）
+  const s = split ? Reward.settled(split, rewardRanks(), now) : null;
   // 配布先アドレスのウォレット残高は Manager 分に入れる（2026-10 ユーザー決定。残高がなければ両方とも 0）
   const selfRow = v.holders.find((h) => h.address === selfAddr);
   const selfWallet = selfRow ? selfRow.wallet : 0;
@@ -290,11 +293,12 @@ function fishShareOf(holders, v) {
   const items = holders.map((h) => ({ amount: h.wallet + h.principal, community: false }));
   const base = Fish.share(items, v.supply);
   const com = v.fishShare.find((x) => x.name === Fish.COMMUNITY.name);
-  const rows = base.map((x) => (x.name === Fish.COMMUNITY.name ? { ...x, count: com.count, amount: com.amount } : x));
+  const rows = base.map((x) => (x.name === Fish.COMMUNITY.name ? { ...x, count: com.count, amount: com.amount } : x))
+    .filter((x) => fishScope === 'all' || x.name !== Fish.COMMUNITY.name); // 保有者だけのときは運営の行を除き、割合も保有者の合計で割る
   const total = rows.reduce((t, r) => t + r.amount, 0);
   const colors = rampFor(Fish.CLASSES.length).reverse(); // Whale が明るい
   return {
-    unit: data.token.symbol, total, center: rows.reduce((t, r) => t + r.count, 0).toLocaleString('ja-JP') + '件', centerSub: '保有者（運営を含む）',
+    unit: data.token.symbol, total, center: rows.reduce((t, r) => t + r.count, 0).toLocaleString('ja-JP') + '件', centerSub: fishScope === 'all' ? '保有者（運営を含む）' : '保有者（運営を除く）',
     rows: rows.map((r) => {
       const ci = Fish.CLASSES.findIndex((c) => c.name === r.name);
       const com = ci < 0;
@@ -375,7 +379,15 @@ function renderShare(d, kind) {
       tr.addEventListener('click', () => pick(r.key));
       return tr;
     }));
-  $('rankShareBox').replaceChildren(el('h2', {}, kind === 'rankShare' ? 'EARN利用者比率' : 'トークン配分内訳'), el('div', { class: 'donut-wrap' }, svg), el('div', { class: 'scroll' }, table));
+  // トークン配分内訳は、運営を含む全体／保有者だけを切り替えられる（工程表 E-01）
+  const scopeSeg = kind !== 'fishShare' ? null : el('div', { class: 'seg share-scope' },
+    ...[['all', 'トークン全体'], ['holders', '保有者のみ']].map(([k, t]) => {
+      const b = el('button', { type: 'button', 'aria-pressed': String(fishScope === k) }, t);
+      b.addEventListener('click', () => { if (fishScope === k) return; fishScope = k; shareSel.fishShare = null; refreshAll(); });
+      return b;
+    }));
+  const note = kind !== 'fishShare' ? null : el('p', { class: 'muted share-note' }, fishScope === 'all' ? '運営を含むトークン全体に対する割合です。' : '運営を除いた、保有者の合計に対する割合です。');
+  $('rankShareBox').replaceChildren(el('h2', {}, kind === 'rankShare' ? 'EARN利用者比率' : 'トークン配分内訳'), scopeSeg, note, el('div', { class: 'donut-wrap' }, svg), el('div', { class: 'scroll' }, table));
 }
 
 // ---- Community（運営）の表示：名前・色・画像はデータで配られる（views.js の communityStyle。取得エクセルの設定シートで決める）

@@ -157,7 +157,7 @@ function renderRewardTab(who, showTotal = true, opts = {}) {
   if (!ok) return;
 
   const now = Math.floor(Date.now() / 1000);
-  const rk = { old: ranks.old, new: ranks.new };
+  const rk = rewardRanks(); // 自分の報酬は TEEP を掛けた表で（version 4 のとき。工程表 E-04）
   const s = Reward.settled(split, rk, now);
 
   // 保有枚数（預入＋報酬）のカード。数字は資産タブの資産額と同じ大きさ。内訳は折りたたみ（起動時は開く）
