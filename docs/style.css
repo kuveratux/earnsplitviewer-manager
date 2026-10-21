@@ -498,3 +498,11 @@ h2.sec-help { display: flex; align-items: center; gap: 8px; }
 .prog-head .tier-inline { display: inline-flex; align-items: center; white-space: nowrap; flex-wrap: nowrap; }
 .prog-head .tier-nb { display: inline-flex; align-items: center; gap: 3px; color: var(--text); }
 .prog-foot { margin-top: 4px; font-size: 11px; color: var(--muted); text-align: right; }
+/* 2.2.1（工程表 E-07、2026-10-21 ユーザー決定）：意図しない拡大だけ止める。指で広げる拡大は残す（viewport の maximum-scale・user-scalable=no は使わない、gesture の打ち消しもしない）
+   ・文字を打つ入力欄・選択欄・複数行の欄は 16px（iPhone は 16px 未満の欄を押すと自動で拡大する）。チェックボックス・ラジオ・ファイルは対象外
+   ・touch-action: manipulation で、ダブルタップの拡大だけを止める（スクロールと指で広げる拡大はそのまま） */
+html { touch-action: manipulation; }
+/* 書き方は EARN VIEWER の E-08（1.0.6）とそろえる。欄ごとの指定（.field select・.filters select・.chart-controls select の font: inherit など）より優先させるため !important */
+input:not([type=checkbox]):not([type=radio]):not([type=color]):not([type=file]):not([type=range]), select, textarea { font-size: 16px !important; }
+/* 16px にした分、試算価格・TUX価格の欄を少し広げる（「例：15」が窮屈にならないように） */
+.trial-row input { width: calc(7ch + 10px); }
