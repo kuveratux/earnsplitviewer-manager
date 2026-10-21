@@ -489,3 +489,12 @@ h2.sec-help { display: flex; align-items: center; gap: 8px; }
 @media (max-width: 380px) { .rank-line.earn { gap: 4px; } .rank-line.earn .cp, .rank-line.earn .rk-name { width: 86px; } .rank-line.earn .rk-tname { width: 46px; } }
 /* 2.1.2：自分の行は枠線が 2px（ほかは 1px）なので、内側の余白を 1px 減らして中身の位置をほかの行とそろえる */
 .ranklist li.rank-row.self { padding: 7px 9px; }
+/* 2.2：次の段階までの進み具合（Manager の合算の保有枚数の EARN Tier・ランキングの次の順位。EARN VIEWER 1.0.3 から取り込み） */
+.prog { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); }
+.prog-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+.prog-need { color: var(--text); white-space: nowrap; }
+.prog-bar { margin-top: 6px; height: 8px; border-radius: 4px; background: var(--card-2); border: 1px solid var(--line); overflow: hidden; }
+.prog-bar > span { display: block; height: 100%; background: linear-gradient(90deg, var(--accent-2), var(--accent)); border-radius: 4px; }
+.prog-head .tier-inline { display: inline-flex; align-items: center; white-space: nowrap; flex-wrap: nowrap; }
+.prog-head .tier-nb { display: inline-flex; align-items: center; gap: 3px; color: var(--text); }
+.prog-foot { margin-top: 4px; font-size: 11px; color: var(--muted); text-align: right; }

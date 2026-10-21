@@ -94,6 +94,32 @@ function renderRecent(opts) {
 //--------------------------------------------------------------
 let rewardMode = 'simple';
 
+// 次の段階までの進み具合：見出し（左・右）と進捗バー。ratio は 0〜1。目のマークで隠すときはバーも空にする（2.2、EARN VIEWER 1.0.3 から取り込み）
+// foot：バーの下の小さい説明（右寄せ。省略可）
+function progressBlock(left, right, ratio, foot) {
+  const r = showYen ? Math.max(0, Math.min(1, ratio || 0)) : 0;
+  return el('div', { class: 'prog' },
+    el('div', { class: 'prog-head' }, el('span', {}, left), el('span', { class: 'prog-need' }, right)),
+    el('div', { class: 'prog-bar' }, el('span', { style: 'width:' + (r * 100).toFixed(1) + '%' })),
+    foot && showYen ? el('div', { class: 'prog-foot' }, foot) : null); // 隠すときは次のランクの名前も出さない（今のランクがわかるため）
+}
+
+// 今の EARN Tier と次のランクまで：ランクは預入枚数（分ける前の合計）で決まるので、あと何枚預ければ上がるか（報酬は含めない）
+// 表は次の1日に使うもの（rankNow と同じ。新ランク表の開始日の前後で旧・新を切り替える）
+function tierProgress(split, rk, s, sym) {
+  const table = split.t + (s.days + 1) * Reward.DAY < Date.parse(rk.new.startDate + 'T00:00:00+09:00') / 1000 ? rk.old.ranks : rk.new.ranks;
+  const cur = s.rankNow;
+  const next = table.find((r) => r.min > s.total);
+  const name = el('span', { class: 'tier-nb' }, showYen ? tierIcon(cur && cur.name) : null, hid(cur ? cur.name : 'ランク外'));
+  if (!next) return progressBlock(el('span', { class: 'tier-inline' }, 'EARN Tier：', name), hid('最上位です'), 1);
+  const from = cur ? cur.min : 0;
+  // 1行に収まるよう、右は「あと ○ 枚」だけ。次のランクの名前と下限はバーの下に
+  return progressBlock(el('span', { class: 'tier-inline' }, 'EARN Tier：', name),
+    'あと ' + hid(fmtInt(Math.ceil(next.min - s.total))) + ' ' + sym,
+    (s.total - from) / (next.min - from),
+    '次の ' + next.name + '（預入 ' + fmtInt(next.min) + ' ' + sym + ' 以上）まで');
+}
+
 // 配布先アドレスのウォレット残高（2.1.1、ユーザー決定）。保有者ランキングを取得した時点の値（データの ranking.source.wallet）
 // ランキングと同じ決まりで Manager 分（と合算）に入れ、Agent 分は 0。ホームの総枚数・資産額、報酬タブの保有枚数・運用シミュレーションに含める
 function walletOf(id) {
@@ -160,6 +186,8 @@ function renderRewardTab(who, showTotal = true, opts = {}) {
       el('div', { class: 'sym' }, multi ? '保有枚数（' + labelOf_(w) + '）' : '保有枚数'),
       el('div', { class: 'hero-row' }, coinIcons[w.id] ? el('img', { class: 'coin-icon', src: coinIcons[w.id], alt: '' }) : null,
         el('span', { class: 'hero-val' }, hid(fmtInt(wallet + w.share + reward)) + ' ' + sym), wi === 0 ? eyeButton() : null),
+      // EARN Tier と次のランクまで：Manager アプリの合算のカードだけ（ランクは分配全体の合計で決まる。Agent アプリには出さない。2.2 ユーザー決定）
+      APP.id === 'manager' && w.id === 'total' ? tierProgress(split, rk, s, sym) : null,
       el('div', { class: 'hero-folds' }, d));
   }));
 

@@ -123,6 +123,8 @@ function renderRankingTab(targets) {
   //   差し込む Manager 分・Agent 分も同じ（配布先のウォレット残高は Manager 分）
   const depositors = ins(v.depositors, (x) => ({ split: x, wallet: x.wallet, principal: x.share, reward: x.reward, total: x.total, rankName: s.rankNow ? s.rankNow.name : null, rate: s.rateNow }));
   const others = v.holders.filter((h) => h.address !== self);
+  // 保有者の順位で、預けている人の EARN Tier（枚数の前にアイコン。2.2、EARN VIEWER 1.0.2 から取り込み）
+  const tierOfAddr = new Map(v.depositors.map((r) => [r.address, r.rankName]));
 
   // 一番上：保有枚数と推定順位（Manager 分・Agent 分は一覧の中の順位、合算はほかの保有者と比べた順位）
   const multi = APP.id === 'manager';
@@ -149,7 +151,9 @@ function renderRankingTab(targets) {
         el('div', { class: 'rank-est' }, showYen ? fishBadge(f, true) : el('span', { class: 'fish big hidden-fish' }, '？'),
           el('div', {}, el(canJump && showYen ? 'button' : 'div', { class: 'rank-est-no' + (canJump && showYen ? ' jump' : ''), type: 'button', onclick: canJump && showYen ? () => jumpToRank(w.id, earn ? 'depositors' : 'holders') : null },
             '推定 ', el('b', {}, hid(est.toLocaleString('ja-JP')) + '位'), el('span', { class: 'muted' }, '（' + (earn ? 'EARN利用者' : '全保有者') + '：' + of.toLocaleString('ja-JP') + '人中）')),
-            el('div', { class: 'muted' }, showYen ? f + '（' + FISH_JA[f] + '）・総供給量の ' + (shownAmount / v.supply * 100).toFixed(3) + '%' : HIDDEN))));
+            el('div', { class: 'muted' }, showYen ? f + '（' + FISH_JA[f] + '）・総供給量の ' + (shownAmount / v.supply * 100).toFixed(3) + '%' : HIDDEN))),
+        // 次の順位まで（2.2、EARN VIEWER 1.0.3 から取り込み）：比べる相手は推定順位と同じ一覧から自分の行を除いたもの（Manager 分のカードでは Agent 分の行も入る）
+        rankProgress(row ? list.filter((r) => r !== row) : base, shownAmount, est, sym));
     }));
 
   // ① 保有者ランキング／② 預入ランキング／③ EARN（ランク＝レベル別の人数）／④ Tier（魚分類）の割合
@@ -178,6 +182,8 @@ function renderRankingTab(targets) {
         rankListKind === 'holders' ? fishBadge(r.fish) : tierIcon(r.rankName),
         r.split ? el('span', { class: 'rk-name' }, r.split.name) : el('button', { class: 'cp', type: 'button', onclick: () => openNameDialog(r.address) }, nameOf(r.address)),
         rankListKind === 'holders' ? null : el('span', { class: 'rk-tname' }, r.rankName || 'ランク外'),
+        // 保有者の順位：預けている人だけ、枚数の前に EARN Tier のアイコン。Manager 分・Agent 分の行は今の EARN Tier（分ける前の合計で決まるので2行とも同じ）
+        rankListKind === 'holders' && (r.split || r.principal > 0) ? tierIcon(r.split ? (s.rankNow && s.rankNow.name) : tierOfAddr.get(r.address)) : null,
         el('span', { class: 'rk-total' }, fmtInt(r.total) + ' ' + sym)),
       el('div', { class: 'rank-sub' }, sub));
   }));
@@ -198,6 +204,16 @@ function renderRankingTab(targets) {
       li.classList.remove('flash'); void li.offsetWidth; li.classList.add('flash');
     }
   }
+}
+
+// 次の順位まで：自分より多い人のうちいちばん少ない人を抜くのに、あと何枚か（2.2、EARN VIEWER 1.0.3 から取り込み）
+// バーは、すぐ下の人（いなければ 0）からすぐ上の人までのどこにいるか。1位なら満タン
+function rankProgress(others, amount, est, sym) {
+  const above = others.filter((r) => r.total > amount).reduce((m, r) => Math.min(m, r.total), Infinity);
+  if (above === Infinity) return progressBlock('次の順位', hid('1位です'), 1);
+  const below = others.filter((r) => r.total <= amount).reduce((m, r) => Math.max(m, r.total), 0);
+  return progressBlock('次の順位（' + hid((est - 1).toLocaleString('ja-JP')) + '位）まで',
+    'あと ' + hid(fmtInt(Math.floor(above - amount) + 1)) + ' ' + sym, (amount - below) / (above - below));
 }
 
 // 一覧の行を1行に収める：はみ出す行だけ文字を少しずつ小さくする（内訳は 9px まで、上の行の枚数は 10px まで。2.1.2、EARN VIEWER 1.0.1 から取り込み。
